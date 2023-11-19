@@ -1,7 +1,5 @@
 use itertools::Itertools;
 
-use crate::trim_input;
-
 fn sum_calories(lines: Vec<String>) -> Vec<u32> {
     let grouped_elves: Vec<&[String]> = lines.split(|calorie: &String| calorie.eq("")).collect();
 
@@ -22,7 +20,6 @@ fn sum_calories(lines: Vec<String>) -> Vec<u32> {
 }
 
 pub fn main(lines: Vec<String>) {
-    let lines = trim_input(lines);
     let calorie_sum: Vec<u32> = sum_calories(lines);
     println!("{}", &calorie_sum.iter().max().unwrap());
     println!(
