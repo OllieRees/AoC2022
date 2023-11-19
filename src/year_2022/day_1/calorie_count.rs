@@ -19,7 +19,7 @@ fn sum_calories(lines: Vec<String>) -> Vec<u32> {
         .collect()
 }
 
-pub fn main(lines: Vec<String>) {
+pub fn solve(lines: Vec<String>) {
     let calorie_sum: Vec<u32> = sum_calories(lines);
     println!("{}", &calorie_sum.iter().max().unwrap());
     println!(

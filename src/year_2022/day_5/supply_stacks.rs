@@ -144,7 +144,7 @@ fn solution(lines: &Vec<String>, use_90001: bool) {
     println!("{:?}", stack_top(stacks.to_owned()));
 }
 
-pub fn main(lines: Vec<String>) {
+pub fn solve(lines: Vec<String>) {
     solution(&lines, false);
     solution(&lines, true);
 }
