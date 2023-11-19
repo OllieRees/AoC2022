@@ -1,10 +1,10 @@
 use std::{fmt, fs};
 
+mod stdin_reader;
+use stdin_reader::*;
+
 mod day_1;
 use day_1::calorie_count;
-
-mod stdin_reader;
-use crate::stdin_reader::*;
 
 enum InputFolder {
     Practice {year: u32, day: u8},
