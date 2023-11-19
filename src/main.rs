@@ -36,3 +36,26 @@ fn main() {
     println!("Real Answers: "); 
     calorie_count::main(real_input);
 }
+
+#[cfg(test)]
+mod main {
+    use crate::*;
+
+    #[test]
+    fn practice_input_folder_formats_correctly() {
+        let mock_folder = InputFolder::Practice { year: 2022, day: 1 }.to_string();
+        assert_eq!(mock_folder, "inputs/2022/1/practice.txt");
+    }
+    
+    #[test]
+    fn real_input_folder_formats_correctly() {
+        let mock_folder = InputFolder::Real { year: 2022, day: 1 }.to_string();
+        assert_eq!(mock_folder, "inputs/2022/1/real.txt");
+    }
+
+    #[test]
+    fn read_input() {
+        let filepath: String = "src/mocks/problem_input.txt".to_owned();
+        assert_eq!(read_problem_input_file(filepath).get(0), Some(&"1000".to_owned()));
+    }
+}

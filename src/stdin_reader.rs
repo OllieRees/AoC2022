@@ -30,23 +30,10 @@ pub fn get_year<R: BufRead>(reader: R) -> u32 {
 }
 
 #[cfg(test)] 
-mod main {
+mod stdin_reader {
     use std::num::ParseIntError;
 
-    use crate::*;
     use crate::stdin_reader::*;
-
-    #[test]
-    fn practice_input_folder_formats_correctly() {
-        let mock_folder = InputFolder::Practice { year: 2022, day: 1 }.to_string();
-        assert_eq!(mock_folder, "inputs/2022/1/practice.txt");
-    }
-    
-    #[test]
-    fn real_input_folder_formats_correctly() {
-        let mock_folder = InputFolder::Real { year: 2022, day: 1 }.to_string();
-        assert_eq!(mock_folder, "inputs/2022/1/real.txt");
-    }
 
     #[test]
     fn read_integer() {
@@ -89,11 +76,5 @@ mod main {
         assert!(inputted_int.is_err());
         assert_eq!(get_day(input), 1);
         assert_eq!(get_year(input), 2022);
-    }
-
-    #[test]
-    fn read_input() {
-        let filepath: String = "src/mocks/problem_input.txt".to_owned();
-        assert_eq!(read_problem_input_file(filepath).get(0), Some(&"1000".to_owned()));
     }
 }
