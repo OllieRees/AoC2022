@@ -44,17 +44,14 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
 fn main() {
     let year: u32 = get_year(stdin_reader());
     let day: u8 = get_day(stdin_reader());
-    let solver = get_module(year, day).expect(format!("Solution for day {day} in {year} doesn't exist").as_str());
-    let input_file_path = | solution_type: AnswerMode | get_file_path(solution_type, year, day); 
-    println!("Reading answers for day {day} in {year}");
-
-    println!("Practice Answers: ");
-    let input: Vec<String> = read_problem_input_file(input_file_path(AnswerMode::Practice));
-    solver(input);
-
-    println!("Real Answers: "); 
-    let input = read_problem_input_file(input_file_path(AnswerMode::Real));
-    solver(input);
+    if let Some(solver) = get_module(year, day) { 
+        let input_file_path = | solution_type: AnswerMode | get_file_path(solution_type, year, day); 
+        println!("Reading answers for day {day} in {year}");
+        let input = read_problem_input_file(input_file_path(AnswerMode::Real));
+        solver(input);
+    } else {
+        println!("Solution for day {day} in {year} doesn't exist");
+    }
 }
 
 #[cfg(test)]
