@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::trim_input;
-
 type Item = char;
 type Compartment = Vec<Item>;
 type Rucksack = (Compartment, Compartment);
@@ -72,8 +70,7 @@ fn parse_rucksack(line: String) -> Rucksack {
     )
 }
 
-pub fn main(lines: Vec<String>) {
-    let lines = trim_input(lines);
+pub fn solve(lines: Vec<String>) {
     let rucksacks: Vec<Rucksack> = lines
         .iter()
         .map(|line: &String| parse_rucksack(line.clone()))

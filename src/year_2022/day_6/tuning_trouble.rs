@@ -17,7 +17,7 @@ fn packet_marker_index(stream: &String) -> Option<usize> {
     first_unique_window_index(stream, 4)
 }
 
-pub fn main(lines: Vec<String>) {
+pub fn solve(lines: Vec<String>) {
     for line in lines {
         let start_mark_i = packet_marker_index(&line);
         match start_mark_i {

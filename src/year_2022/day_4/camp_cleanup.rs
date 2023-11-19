@@ -1,7 +1,5 @@
 use itertools::Itertools;
 
-use crate::trim_input;
-
 type ElfPair = (u32, u32);
 
 fn has_superset(pair_a: ElfPair, pair_b: ElfPair) -> bool {
@@ -29,8 +27,7 @@ fn parse_elf_pair(line: String) -> (ElfPair, ElfPair) {
         .unwrap()
 }
 
-pub fn main(lines: Vec<String>) {
-    let lines = trim_input(lines);
+pub fn solve(lines: Vec<String>) {
     let mut superset_cntr = 0;
     let mut overlap_cntr = 0;
     for line in lines {

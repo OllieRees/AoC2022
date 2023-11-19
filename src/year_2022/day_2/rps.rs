@@ -1,7 +1,5 @@
 use itertools::Itertools;
 
-use crate::trim_input;
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Move {
     Rock = 1,
@@ -99,8 +97,7 @@ fn parse_move_result_pair(line: String) -> (Move, Result) {
     )
 }
 
-pub fn main(lines: Vec<String>) {
-    let lines = trim_input(lines);
+pub fn solve(lines: Vec<String>) {
     let score: u32 = lines
         .clone()
         .into_iter()
