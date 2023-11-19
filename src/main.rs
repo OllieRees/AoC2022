@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
 use std::{fmt, io, fs};
-use std::io::{Read, Write};
+use std::io::{Read, Write, BufRead};
 
 mod day_1;
 use day_1::calorie_count;
@@ -19,13 +19,17 @@ impl fmt::Display for InputFolder {
     }
 }
 
-fn stdio_read_integer<R: Read>(mut reader: R) -> Result<u32, ParseIntError> {
+fn stdin_reader() -> Box<dyn BufRead> {
+    Box::new(io::stdin().lock()) as Box<dyn BufRead>
+}
+
+fn stdio_read_integer<R: BufRead>(mut reader: R) -> Result<u32, ParseIntError> {
     let mut input = String::new();
-    reader.read_to_string(&mut input).unwrap();
+    reader.read_line(&mut input).unwrap();
     input.trim().parse()
 }
 
-fn get_day<R: Read>(reader: R) -> u8 {
+fn get_day<R: BufRead>(reader: R) -> u8 {
     print!("Please enter a day: ");
     let _ = io::stdout().flush();
     match stdio_read_integer(reader) {
@@ -34,7 +38,7 @@ fn get_day<R: Read>(reader: R) -> u8 {
     } 
 }
 
-fn get_year<R: Read>(reader: R) -> u32 {
+fn get_year<R: BufRead>(reader: R) -> u32 {
     print!("Please enter a year: ");
     let _ = io::stdout().flush();
     match stdio_read_integer(reader) {
@@ -49,8 +53,8 @@ fn read_problem_input_file(filepath: String) -> Vec<String> {
 }
 
 fn main() {
-    let year: u32 = get_year(io::stdin());
-    let day: u8 = get_day(io::stdin());
+    let year: u32 = get_year(stdin_reader());
+    let day: u8 = get_day(stdin_reader());
     println!("Reading answers for day {day} in {year}");
     let practice_input = read_problem_input_file(InputFolder::Practice { year, day }.to_string());
     let real_input = read_problem_input_file(InputFolder::Real { year, day }.to_string());
