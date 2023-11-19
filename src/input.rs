@@ -33,7 +33,7 @@ pub fn get_year<R: BufRead>(reader: R) -> u32 {
 mod stdin_reader {
     use std::num::ParseIntError;
 
-    use crate::stdin_reader::*;
+    use crate::input::*;
 
     #[test]
     fn read_integer() {

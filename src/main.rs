@@ -1,7 +1,7 @@
 use std::{fmt, fs};
 
-mod stdin_reader;
-use stdin_reader::*;
+mod input;
+use input::*;
 
 mod day_1;
 use day_1::calorie_count;
