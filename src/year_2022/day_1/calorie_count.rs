@@ -24,3 +24,60 @@ pub fn solve(lines: Vec<String>) {
     println!("{}", calorie_maximal(1));
     println!("{}", calorie_maximal(3));
 }
+
+#[cfg(test)]
+mod calorie_count {
+    use crate::year_2022::day_1::calorie_count::largest_n_calories;
+
+    use super::{group_calories, sum_calories};
+
+    #[test]
+    fn multi_group_calories() {
+        let input = vec!["1000", "2000", "3000", "", "4000", "", "5000", "6000"].into_iter().map(|str| str.to_owned()).collect();
+        assert_eq!(group_calories(input), vec![vec![1000, 2000, 3000], vec![4000], vec![5000, 6000]]) 
+    }
+
+    #[test]
+    fn no_group_calories() {
+        let input: Vec<String> = vec![];
+        assert_eq!(group_calories(input), vec![] as Vec<Vec<u32>>); 
+    }
+
+    #[test]
+    fn sum_multiple_calorie_groups() {
+        let input = vec![vec![1000, 2000, 3000], vec![4000], vec![5000, 6000]];
+        assert_eq!(sum_calories(input), vec![6000, 4000, 11000]);
+    }
+
+    #[test]
+    fn sum_no_calorie_groups() {
+        let input: Vec<Vec<u32>> = vec![];
+        assert_eq!(sum_calories(input), vec![]);
+    }
+
+    #[test]
+    fn largest_two_calories_from_group() {
+        assert_eq!(largest_n_calories(vec![6000, 7000, 3000, 10000], 2), vec![10000, 7000]);
+    }
+    
+    #[test]
+    fn largest_calorie_from_group() {
+        assert_eq!(largest_n_calories(vec![6000, 3000, 10000], 1), vec![10000]);
+    }
+
+    #[test]
+    fn largest_calorie_from_singleton() {
+        assert_eq!(largest_n_calories(vec![6000], 1), vec![6000]);
+    }
+
+    #[test]
+    fn largest_calorie_from_none() {
+        assert_eq!(largest_n_calories(vec![], 1), vec![]);
+    }
+
+    #[test]
+    fn largest_3_calories_from_none() {
+        assert_eq!(largest_n_calories(vec![], 1), vec![]);
+    }
+
+}
