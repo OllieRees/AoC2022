@@ -73,4 +73,10 @@ mod main {
         let filepath: String = "src/mocks/problem_input.txt".to_owned();
         assert_eq!(read_problem_input_file(filepath).get(0), Some(&"1000".to_owned()));
     }
+
+    #[test]
+    fn read_input_newline() {
+        let filepath: String = "src/mocks/problem_input.txt".to_owned();
+        assert_eq!(read_problem_input_file(filepath).get(3), Some(&"".to_owned()));
+    }
 }
