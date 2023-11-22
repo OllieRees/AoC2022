@@ -1,117 +1,155 @@
+use std::str::FromStr;
+
 use itertools::Itertools;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq)]
+struct ParseMoveError;
+
+#[derive(Debug, PartialEq, Eq)]
+struct ParseRoundError;
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Move {
     Rock = 1,
     Paper = 2,
-    Scissors = 3,
+    Scissors = 3
 }
 
-impl Move {
-    fn parse_move(move_symbol: &str) -> Move {
-        // let move_symbol: &str = &move_symbol[..];
-        match move_symbol {
-            "A" | "X" => Move::Rock,
-            "B" | "Y" => Move::Paper,
-            "C" | "Z" => Move::Scissors,
-            _ => panic!("Symbol given isn't linked to a move"),
-        }
-    }
+impl FromStr for Move {
+    type Err = ParseMoveError;
 
-    fn counter_move(&self) -> Move {
-        match self {
-            Move::Rock => Move::Paper,
-            Move::Paper => Move::Scissors,
-            Move::Scissors => Move::Rock,
-        }
-    }
-
-    fn beating_move(&self) -> Move {
-        match self {
-            Move::Rock => Move::Scissors,
-            Move::Paper => Move::Rock,
-            Move::Scissors => Move::Paper,
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "A" | "X" => Ok(Move::Rock),
+            "B" | "Y" => Ok(Move::Paper),
+            "C" | "Z" => Ok(Move::Scissors),
+            _ => Err(ParseMoveError)
         }
     }
 }
 
-enum Result {
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum GameResult {
     Loss = 0,
     Win = 6,
     Draw = 3,
 }
 
-impl Result {
-    fn parse_result(move_symbol: &str) -> Result {
-        // let move_symbol: &str = &move_symbol[..];
-        match move_symbol {
-            "X" => Result::Loss,
-            "Y" => Result::Draw,
-            "Z" => Result::Win,
-            _ => panic!("Symbol given isn't linked to a result"),
+impl FromStr for GameResult {
+    type Err = ParseMoveError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "X" => Ok(GameResult::Win),
+            "Y" => Ok(GameResult::Draw),
+            "Z" => Ok(GameResult::Win),
+            _ => Err(ParseMoveError)
         }
     }
+}
 
-    fn get_result(your_move: Move, opponent_move: Move) -> Result {
-        if your_move == opponent_move {
-            return Result::Draw;
+impl GameResult {
+    fn determine(opponent_move: Move, your_move: Move) -> Self {
+        if opponent_move == your_move {
+            return GameResult::Draw;
         }
-        if opponent_move.counter_move() == your_move {
-            return Result::Win;
+
+        match (opponent_move, your_move) {
+            (Move::Rock, Move::Paper) => GameResult::Win,
+            (Move::Paper, Move::Scissors) => GameResult::Win,
+            (Move::Scissors, Move::Rock) => GameResult::Win,
+            _ => GameResult::Loss,
         }
-        Result::Loss
     }
 }
 
-fn get_move_from_expected_result(opponent_move: Move, expected_result: &Result) -> Move {
-    match expected_result {
-        Result::Draw => opponent_move,
-        Result::Win => opponent_move.counter_move(),
-        Result::Loss => opponent_move.beating_move(),
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+struct Round {
+    opponent: Move,
+    you: Move,
+    result: GameResult,
+}
+
+impl FromStr for Round {
+    type Err = ParseRoundError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split_whitespace().map(|mv| mv.parse::<Move>()).collect_tuple::<(Result<Move, ParseMoveError>, Result<Move, ParseMoveError>)>() {
+            Some(moves) => {
+                match moves {
+                    (Ok(opponent_move), Ok(your_move)) => Ok(Round {opponent: opponent_move, you: your_move, result: GameResult::determine(opponent_move, your_move)}),
+                    _ => Err(ParseRoundError)
+                }
+            },
+            _ => Err(ParseRoundError),
+        }
     }
 }
 
-fn get_score(opponent_move: Move, your_move: Move) -> u32 {
-    Result::get_result(your_move, opponent_move) as u32 + your_move as u32
+impl Round {
+    fn my_score(&self) -> u32 {
+        (self.result as u32) + (self.you as u32)
+    }
 }
 
-fn get_score_from_expected_result(opponent_move: Move, expected_result: Result) -> u32 {
-    let your_move = get_move_from_expected_result(opponent_move, &expected_result);
-    expected_result as u32 + your_move as u32
+fn parse_rounds(lines: Vec<String>) -> Vec<Round> {
+    lines.into_iter().filter_map(|line| line.parse::<Round>().ok()).collect()
 }
 
-fn parse_move_pair(line: String) -> (Move, Move) {
-    line.split_whitespace()
-        .map(|move_symbol| Move::parse_move(move_symbol))
-        .collect_tuple::<(Move, Move)>()
-        .unwrap()
-}
-
-fn parse_move_result_pair(line: String) -> (Move, Result) {
-    let (move_symbol, result_symbol): (&str, &str) =
-        line.split_whitespace().collect_tuple().unwrap();
-
-    (
-        Move::parse_move(move_symbol),
-        Result::parse_result(result_symbol),
-    )
+fn total_score(rounds: Vec<Round>) -> u32 {
+    rounds.into_iter().map(|round| round.my_score()).sum::<u32>()
 }
 
 pub fn solve(lines: Vec<String>) {
-    let score: u32 = lines
-        .clone()
-        .into_iter()
-        .map(|line: String| parse_move_pair(line))
-        .map(|(opp_move, your_move)| get_score(your_move, opp_move))
-        .sum();
+    let total_score =  total_score(parse_rounds(lines));
+    println!("Your total score is {total_score}");
+}
 
-    println!("Your total score is {score}");
+#[cfg(test)]
+mod rps {
+    use super::*;
 
-    let score: u32 = lines
-        .into_iter()
-        .map(|line: String| parse_move_result_pair(line))
-        .map(|(opp_move, result)| get_score_from_expected_result(opp_move, result))
-        .sum();
+    #[test]
+    fn test_parse_move() {
+        assert_eq!("A".parse::<Move>(), Ok(Move::Rock));
+        assert_eq!("B".parse::<Move>(), Ok(Move::Paper));
+        assert_eq!("C".parse::<Move>(), Ok(Move::Scissors));
 
-    println!("Your total score is {score}");
+        assert_eq!("X".parse::<Move>(), Ok(Move::Rock));
+        assert_eq!("Y".parse::<Move>(), Ok(Move::Paper));
+        assert_eq!("Z".parse::<Move>(), Ok(Move::Scissors));
+    }
+
+    #[test]
+    fn test_parse_round() {
+        assert_eq!("A Y".parse::<Round>(), Ok(Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win}));
+        assert_eq!("B X".parse::<Round>(), Ok(Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss}));
+        assert_eq!("C Z".parse::<Round>(), Ok(Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw}));
+    }
+
+    #[test]
+    fn test_parse_rounds() {
+        let lines: Vec<String> = vec![String::from("A Y"), String::from("B X"), String::from("C Z")];
+        assert_eq!(parse_rounds(lines), vec![
+            Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win}, 
+            Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss}, 
+            Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw}
+        ]);
+    }
+
+    #[test]
+    fn test_my_score() {
+        let round: Round = Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win};
+        assert_eq!(round.my_score(), 8);
+        let round: Round = Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss};
+        assert_eq!(round.my_score(), 1);
+        let round: Round = Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw};
+        assert_eq!(round.my_score(), 6);
+    }
+
+    #[test]
+    fn test_total_score() {
+        let lines: Vec<String> = vec![String::from("A Y"), String::from("B X"), String::from("C Z")];
+        assert_eq!(total_score(parse_rounds(lines)), 15);
+    }
 }
