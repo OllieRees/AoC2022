@@ -5,6 +5,9 @@ use input::*;
 
 mod year_2022;
 
+#[derive(Debug, PartialEq, Eq)]
+struct ParseLineError;
+
 
 enum AnswerMode {
     Practice,
