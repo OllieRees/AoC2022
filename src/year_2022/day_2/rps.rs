@@ -73,13 +73,10 @@ impl GameResult {
         if opponent_move == your_move {
             return GameResult::Draw;
         }
-
-        match (opponent_move, your_move) {
-            (Move::Rock, Move::Paper) => GameResult::Win,
-            (Move::Paper, Move::Scissors) => GameResult::Win,
-            (Move::Scissors, Move::Rock) => GameResult::Win,
-            _ => GameResult::Loss,
+        if opponent_move.weakness() == your_move {
+            return GameResult::Win;
         }
+        GameResult::Loss
     }
     
     fn move_from_outcome(&self, opponent_move: Move) -> Move {
