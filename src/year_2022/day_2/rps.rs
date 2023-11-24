@@ -1,4 +1,4 @@
-use std::{str::FromStr, string::ParseError};
+use std::str::FromStr;
 
 use itertools::Itertools;
 
@@ -32,6 +32,10 @@ impl Move {
             Move::Paper => Move::Rock,
             Move::Scissors => Move::Paper,
         }
+    }
+
+    fn parse(s: &str) -> Option<Self> {
+        s.parse::<Move>().ok()
     }
 }
 
@@ -86,6 +90,10 @@ impl GameResult {
             GameResult::Loss => opponent_move.strength()
         }
     }
+
+    fn parse(s: &str) -> Option<Self> {
+        s.parse::<GameResult>().ok()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -97,17 +105,14 @@ struct Round {
 
 impl Round {
     fn new_from_moves(line: &str) -> Option<Self> {
-        let parse_move = |line: &str| line.parse::<Move>().ok();
-        match parse_line(line, parse_move, parse_move).ok() {
+        match parse_line(line, Move::parse, Move::parse).ok() {
             Some((l, r)) => Some(Round{opponent: l, you: r, result: GameResult::outcome(l, r)}),
             _ => None,    
         }
     }
 
     fn new_from_result(line: &str) -> Option<Self> {
-        let parse_move = |line: &str| line.parse::<Move>().ok();
-        let parse_result = |line: &str| line.parse::<GameResult>().ok();
-        match parse_line(line, parse_move, parse_result).ok() {
+        match parse_line(line, Move::parse, GameResult::parse).ok() {
             Some((l, r)) => Some(Round{opponent: l, you: r.move_from_outcome(l), result: r}),
             _ => None,    
         }
@@ -195,10 +200,8 @@ mod rps {
 
     #[test]
     fn test_parse_line() {
-        let parse_move = |line: &str| line.parse::<Move>().ok();
-        let parse_result = |line: &str| line.parse::<GameResult>().ok();
-        assert_eq!(parse_line("A Y", parse_move, parse_move), Ok((Move::Rock, Move::Paper)));
-        assert_eq!(parse_line("A Y", parse_move, parse_result), Ok((Move::Rock, GameResult::Draw)));
+        assert_eq!(parse_line("A Y", Move::parse, Move::parse), Ok((Move::Rock, Move::Paper)));
+        assert_eq!(parse_line("A Y", Move::parse, GameResult::parse), Ok((Move::Rock, GameResult::Draw)));
     }
 
     #[test]
@@ -218,6 +221,7 @@ mod rps {
     #[test]
     fn parse_line_too_many_tokens() {
         let line = "A Y Z";
+        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
         assert!(Round::new_from_moves(line).is_none());
         assert!(Round::new_from_result(line).is_none());
     }
@@ -225,6 +229,7 @@ mod rps {
     #[test]
     fn parse_line_wrong_tokens() {
         let line = "A D";
+        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
         assert!(Round::new_from_moves(line).is_none());
         assert!(Round::new_from_result(line).is_none());
     }
@@ -239,9 +244,9 @@ mod rps {
         assert_eq!(round.my_score(), 6);
     }
 
-    // #[test]
-    // fn test_total_score() {
-    //     let lines: Vec<String> = vec![String::from("A Y"), String::from("B X"), String::from("C Z")];
-    //     assert_eq!(total_score(parse_rounds(lines)), 15);
-    // }
+    #[test]
+    fn test_total_score() {
+        let lines: Vec<String> = vec![String::from("A Y"), String::from("B X"), String::from("C Z")];
+        assert_eq!(total_score(parse_rounds(&lines, Round::new_from_moves)), 15);
+    }
 }
