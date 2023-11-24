@@ -241,7 +241,7 @@ mod rps {
 
     #[test]
     fn test_scoring() {
-        let mut rounds: Vec<Round> = vec![
+        let rounds: Vec<Round> = vec![
             Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win}, 
             Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss},
             Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw}
