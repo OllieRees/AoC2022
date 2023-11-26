@@ -82,10 +82,18 @@ struct GameState {
 }
 
 impl GameState {
-    fn parse(s: Vec<String>) -> Result<Self, ParseGameStateError> {
-        // TODO: Use regex to enforce a structure
+    fn _parse_stack_count(s: Option<&String>) -> Result<usize, ParseGameStateError> {
+        if let Some(footer) = s {
+            if let Some(x) = footer.chars().filter_map(|c: char| c.to_digit(10)).last() {
+                return Ok(x as usize);
+            }
+        }
+        Err(ParseGameStateError)
+    }
+
+    fn _parse_crates(s: Vec<String>, stack_count: usize) -> Vec<Vec<char>> {
         let mut stacks: Vec<Vec<char>> = Vec::new();
-        for line in &s[..(s.len() - 1)].to_vec() {
+        for line in &s[..stack_count].to_vec() {
             for (n, chunk) in line.chars().collect::<Vec<char>>().chunks(4).enumerate() {
                 match stacks.get_mut(n) {
                     Some(stack) => stack.push(chunk[1]),
@@ -93,7 +101,16 @@ impl GameState {
                 }
             }
         }
-        Ok(GameState { stacks: stacks.into_iter().map(|stack| Stack { crates: stack.into_iter().skip_while(|c| c == &' ').collect() }).collect() })
+        stacks
+    }
+
+    fn parse(s: Vec<String>) -> Result<Self, ParseGameStateError> {
+        if let Ok(stack_count) = GameState::_parse_stack_count(s.last()) {
+            let create_stack = |stack: Vec<char>| Stack { crates: stack.into_iter().skip_while(|c| c == &' ').collect() };
+            let stacks = GameState::_parse_crates(s, stack_count).into_iter().map(create_stack).collect();
+            return Ok(GameState { stacks });
+        }
+        Err(ParseGameStateError)
     }
 
     fn top_crates(&self) -> Vec<char> {
