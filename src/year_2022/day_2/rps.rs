@@ -205,6 +205,27 @@ mod rps {
     }
 
     #[test]
+    fn parse_line_too_many_tokens() {
+        let line = "A Y Z";
+        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
+    }
+
+    #[test]
+    fn parse_line_wrong_tokens() {
+        let line = "A D";
+        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
+    }
+
+    #[test]
+    fn parse_line_failure_causes_round_parsing_fail() {
+        // Ensure that parse line fails
+        assert!(parse_line("A Y Z", Move::parse, Move::parse).err().is_some());
+        
+        assert!(Round::new_from_moves("A Y Z").is_none());
+        assert!(Round::new_from_result("A Y Z").is_none());
+    }
+
+    #[test]
     fn test_parse_from_moves() {
         assert_eq!(Round::new_from_moves("A Y"), Some(Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win}));
         assert_eq!(Round::new_from_moves("B X"), Some(Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss}));
@@ -219,34 +240,15 @@ mod rps {
     }
 
     #[test]
-    fn parse_line_too_many_tokens() {
-        let line = "A Y Z";
-        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
-        assert!(Round::new_from_moves(line).is_none());
-        assert!(Round::new_from_result(line).is_none());
-    }
-
-    #[test]
-    fn parse_line_wrong_tokens() {
-        let line = "A D";
-        assert!(parse_line(line, Move::parse, Move::parse).err().is_some());
-        assert!(Round::new_from_moves(line).is_none());
-        assert!(Round::new_from_result(line).is_none());
-    }
-
-    #[test]
-    fn test_my_score() {
-        let round: Round = Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win};
-        assert_eq!(round.my_score(), 8);
-        let round: Round = Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss};
-        assert_eq!(round.my_score(), 1);
-        let round: Round = Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw};
-        assert_eq!(round.my_score(), 6);
-    }
-
-    #[test]
-    fn test_total_score() {
-        let lines: Vec<String> = vec![String::from("A Y"), String::from("B X"), String::from("C Z")];
-        assert_eq!(total_score(parse_rounds(&lines, Round::new_from_moves)), 15);
+    fn test_scoring() {
+        let rounds: Vec<Round> = vec![
+            Round{opponent: Move::Rock, you: Move::Paper, result: GameResult::Win}, 
+            Round{opponent: Move::Paper, you: Move::Rock, result: GameResult::Loss},
+            Round{opponent: Move::Scissors, you: Move::Scissors, result: GameResult::Draw}
+        ];
+        assert_eq!(rounds.get(0).unwrap().my_score(), 8);
+        assert_eq!(rounds.get(1).unwrap().my_score(), 1);
+        assert_eq!(rounds.get(2).unwrap().my_score(), 6);
+        assert_eq!(total_score(rounds), 8 + 1 + 6);
     }
 }

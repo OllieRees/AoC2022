@@ -8,22 +8,22 @@ mod year_2022;
 #[derive(Debug, PartialEq, Eq)]
 struct ParseLineError;
 
+#[derive(Debug, PartialEq, Eq)]
+struct ParseInputError;
 
 enum AnswerMode {
-    Practice,
     Real,
 }
 
 fn get_file_path(solution_type: AnswerMode, year: u32, day: u8) -> String {
     match solution_type {
-        AnswerMode::Practice => format!("inputs/{year}/{day}/practice.txt").to_owned(),
         AnswerMode::Real => format!("inputs/{year}/{day}/real.txt").to_owned(),
     }
 }
 
 fn read_problem_input_file(filepath: String) -> Vec<String> {
     let contents: String = fs::read_to_string(filepath).unwrap();
-    contents.split("\n").map(|line| line.trim().to_owned()).collect()
+    contents.split("\n").map(|line| line.to_owned()).collect()
 }
 
 fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
@@ -60,11 +60,6 @@ fn main() {
 #[cfg(test)]
 mod main {
     use crate::*;
-
-    #[test]
-    fn practice_input_folder_formats_correctly() {
-        assert_eq!(get_file_path(AnswerMode::Practice, 2023, 3), "inputs/2023/3/practice.txt");
-    }
     
     #[test]
     fn real_input_folder_formats_correctly() {
