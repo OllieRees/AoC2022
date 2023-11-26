@@ -50,6 +50,7 @@ impl Instruction {
     fn execute(&self, state: GameState, migrate: impl Fn(Stack, Stack, usize) -> Result<(Stack, Stack), ExecutionError>) -> Result<GameState, ExecutionError> {
         if let (Some(source_stack), Some(destination_stack)) = (state.stacks.get(self.source - 1), state.stacks.get(self.destination - 1)) {
             if let Ok((new_source_stack, new_destination_stack)) = migrate(source_stack.clone(), destination_stack.clone(), self.count) {
+                // quite unsafe - can this be improved?
                 let mut stacks = state.stacks.clone();
                 let _ = std::mem::replace(&mut stacks[self.source - 1], new_source_stack);
                 let _ = std::mem::replace(&mut stacks[self.destination - 1], new_destination_stack);
@@ -94,15 +95,16 @@ impl GameState {
         }
         Ok(GameState { stacks: stacks.into_iter().map(|stack| Stack { crates: stack.into_iter().skip_while(|c| c == &' ').collect() }).collect() })
     }
+
     fn top_crates(&self) -> Vec<char> {
         self.stacks.iter().map(|stack: &Stack| stack.crates.get(0).unwrap_or(&' ').to_owned()).collect()
     }
 }
 
-fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Option<Instruction>>), ParseInputError> {
+fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Instruction>), ParseInputError> {
     if let Some((state_input, instruction_input)) = input.split(|line| line == "").collect_tuple::<(&[String], &[String])>() {
         if let Ok(state) = GameState::parse(state_input.to_vec()) {
-            let instructions: Vec<Option<Instruction>> = instruction_input.into_iter().map(|instruction| instruction.parse::<Instruction>().ok()).collect();
+            let instructions: Vec<Instruction> = instruction_input.into_iter().filter_map(|instruction| instruction.parse::<Instruction>().ok()).collect();
             return Ok((state, instructions));
         }
     }
@@ -111,19 +113,9 @@ fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Option
 
 pub fn solve(lines: Vec<String>) {
     if let Ok((state, instructions)) = divide_stack_instruction(lines) {
-        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Option<Instruction>| { 
-            match instruction {
-                Some(instruction) =>   instruction.execute(state, Stack::migrate_async).unwrap(),
-                None => state,
-            }
-        });
+        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Instruction| instruction.execute(state, Stack::migrate_async).unwrap());
         println!("{}", String::from_iter(final_state.top_crates()));
-        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Option<Instruction>| { 
-            match instruction {
-                Some(instruction) =>   instruction.execute(state, Stack::migrate_sync).unwrap(),
-                None => state,
-            }
-        });
+        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Instruction| instruction.execute(state, Stack::migrate_sync).unwrap());
         println!("{}", String::from_iter(final_state.top_crates()));
     }
 }
@@ -159,10 +151,10 @@ mod supply_stacks {
         let (_, instructions) = divide_stack_instruction(input).unwrap();
         
         assert_eq!(instructions, vec![
-            Some(Instruction{count: 1, source: 2, destination: 1}),
-            Some(Instruction{count: 3, source: 1, destination: 3}),
-            Some(Instruction{count: 2, source: 2, destination: 1}),
-            Some(Instruction{count: 1, source: 1, destination: 2})
+            Instruction{count: 1, source: 2, destination: 1},
+            Instruction{count: 3, source: 1, destination: 3},
+            Instruction{count: 2, source: 2, destination: 1},
+            Instruction{count: 1, source: 1, destination: 2}
         ]);
     }
 
@@ -198,7 +190,7 @@ mod supply_stacks {
     fn test_execute_solve_async() {
         let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
         let (state, instructions) = divide_stack_instruction(input).unwrap();
-        let state = instructions.into_iter().fold(state, |state: GameState, instruction: Option<Instruction>| instruction.unwrap().execute(state, Stack::migrate_async).unwrap());
+        let state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Instruction| instruction.execute(state, Stack::migrate_async).unwrap());
         assert_eq!(state, GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['C'])}, Stack{crates: VecDeque::from(vec!['M'])}, Stack{crates: VecDeque::from(vec!['Z', 'N', 'D', 'P'])}]});
     }
 
@@ -206,7 +198,7 @@ mod supply_stacks {
     fn test_execute_solve_sync() {
         let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
         let (state, instructions) = divide_stack_instruction(input).unwrap();
-        let state = instructions.into_iter().fold(state, |state: GameState, instruction: Option<Instruction>| instruction.unwrap().execute(state, Stack::migrate_sync).unwrap());
+        let state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Instruction| instruction.execute(state, Stack::migrate_sync).unwrap());
         assert_eq!(state, GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['M'])}, Stack{crates: VecDeque::from(vec!['C'])}, Stack{crates: VecDeque::from(vec!['D', 'N', 'Z', 'P'])}]});
     }
 
