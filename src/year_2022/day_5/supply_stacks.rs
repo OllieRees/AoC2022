@@ -1,4 +1,4 @@
-use std::{str::FromStr, vec};
+use std::{str::FromStr, vec, collections::VecDeque};
 
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -12,33 +12,32 @@ struct ParseGameStateError;
 #[derive(Debug, PartialEq, Eq)]
 struct ParseInstructionError;
 
-
-struct GameState {
-    stacks: Vec<Stack>,
-}
-
-impl FromStr for GameState {
-    type Err = ParseGameStateError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Err(ParseGameStateError)
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
+struct ExecutionError;
+
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Stack {
-    crates: Vec<char>,
+    crates: VecDeque<char>,
 }
 
 impl Stack {
-    fn migrate_async(&self, destination: Stack, amount: usize) -> Stack {
-        Stack {crates: vec![]}
+    fn migrate_async(self, destination: Stack, amount: usize) -> Result<(Stack, Stack), ExecutionError> {
+        let mut source_crates: VecDeque<char> = self.crates;
+        let mut destination_crates: VecDeque<char> = destination.crates;
+        source_crates.drain(0..amount).into_iter().for_each(|e: char| destination_crates.push_front(e));
+        Ok((Stack{ crates: source_crates }, Stack{ crates: destination_crates }))
     }
 
-    fn migrate_sync(&self, destination: Stack, amount: usize) -> Stack {
-        Stack {crates: vec![]}
+    fn migrate_sync(self, destination: Stack, amount: usize) -> Result<(Stack, Stack), ExecutionError> {
+        let mut source_crates: VecDeque<char> = self.crates;
+        let mut destination_crates: VecDeque<char> = destination.crates;
+        let mut migrating_crates: VecDeque<char> = source_crates.drain(0..amount).collect();
+        migrating_crates.append(&mut destination_crates);
+        Ok((Stack{ crates: source_crates }, Stack{ crates: migrating_crates }))
     }
 }
+
 
 #[derive(Debug, PartialEq, Eq)]
 struct Instruction {
@@ -48,8 +47,16 @@ struct Instruction {
 }
 
 impl Instruction {
-    fn execute(&self, state: GameState, migrate: impl Fn(&Stack, Stack, usize) -> Stack) -> GameState {
-        GameState {stacks: vec![]}
+    fn execute(&self, state: GameState, migrate: impl Fn(Stack, Stack, usize) -> Result<(Stack, Stack), ExecutionError>) -> Result<GameState, ExecutionError> {
+        if let (Some(source_stack), Some(destination_stack)) = (state.stacks.get(self.source - 1), state.stacks.get(self.destination - 1)) {
+            if let Ok((new_source_stack, new_destination_stack)) = migrate(source_stack.clone(), destination_stack.clone(), self.count) {
+                let mut stacks = state.stacks.clone();
+                let _ = std::mem::replace(&mut stacks[self.source - 1], new_source_stack);
+                let _ = std::mem::replace(&mut stacks[self.destination - 1], new_destination_stack);
+                return Ok(GameState { stacks });
+            }
+        }
+        Err(ExecutionError)
     }
 }
 
@@ -68,9 +75,33 @@ impl FromStr for Instruction {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct GameState {
+    stacks: Vec<Stack>,
+}
+
+impl GameState {
+    fn parse(s: Vec<String>) -> Result<Self, ParseGameStateError> {
+        // TODO: Use regex to enforce a structure
+        let mut stacks: Vec<Vec<char>> = Vec::new();
+        for line in &s[..(s.len() - 1)].to_vec() {
+            for (n, chunk) in line.chars().collect::<Vec<char>>().chunks(4).enumerate() {
+                match stacks.get_mut(n) {
+                    Some(stack) => stack.push(chunk[1]),
+                    None => stacks.insert(n, vec![chunk[1]]),
+                }
+            }
+        }
+        Ok(GameState { stacks: stacks.into_iter().map(|stack| Stack { crates: stack.into_iter().skip_while(|c| c == &' ').collect() }).collect() })
+    }
+    fn top_crates(&self) -> Vec<char> {
+        self.stacks.iter().map(|stack: &Stack| stack.crates.get(0).unwrap_or(&' ').to_owned()).collect()
+    }
+}
+
 fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Option<Instruction>>), ParseInputError> {
     if let Some((state_input, instruction_input)) = input.split(|line| line == "").collect_tuple::<(&[String], &[String])>() {
-        if let Ok(state) = state_input.join("\n").parse::<GameState>() {
+        if let Ok(state) = GameState::parse(state_input.to_vec()) {
             let instructions: Vec<Option<Instruction>> = instruction_input.into_iter().map(|instruction| instruction.parse::<Instruction>().ok()).collect();
             return Ok((state, instructions));
         }
@@ -79,7 +110,22 @@ fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Option
 }
 
 pub fn solve(lines: Vec<String>) {
-    
+    if let Ok((state, instructions)) = divide_stack_instruction(lines) {
+        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Option<Instruction>| { 
+            match instruction {
+                Some(instruction) =>   instruction.execute(state, Stack::migrate_async).unwrap(),
+                None => state,
+            }
+        });
+        println!("{}", String::from_iter(final_state.top_crates()));
+        let final_state = instructions.iter().fold(state.clone(), |state: GameState, instruction: &Option<Instruction>| { 
+            match instruction {
+                Some(instruction) =>   instruction.execute(state, Stack::migrate_sync).unwrap(),
+                None => state,
+            }
+        });
+        println!("{}", String::from_iter(final_state.top_crates()));
+    }
 }
 
 #[cfg(test)]
@@ -94,27 +140,22 @@ mod supply_stacks {
     }
 
     #[test]
-    fn test_parse_state_no_footers() {
-        let mut input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
-        input.remove(input.len() - 1);
-        let input = input.join("\n");
-        assert!(input.parse::<GameState>().is_err()); 
+    fn test_parse_state() {
+        let input = vec!["    [D]    ".to_owned(), "[N] [C]    ".to_owned(), "[Z] [M] [P]".to_owned(), " 1   2   3 ".to_owned()];
+        assert_eq!(GameState::parse(input).unwrap(), GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['N', 'Z'])}, Stack{crates: VecDeque::from(vec!['D', 'C', 'M'])}, Stack{crates:VecDeque::from(vec!['P'])}]});
     }
 
     #[test]
     fn test_parse_input_correct_state() {
         let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
         let (state, _) = divide_stack_instruction(input).unwrap();
-        assert_eq!(state.stacks, vec![
-            Stack{crates: vec!['N', 'Z']}, 
-            Stack{crates: vec!['D', 'C', 'M']}, 
-            Stack{crates: vec!['P']}
-        ]);
+        
+        assert_eq!(state, GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['N', 'Z'])}, Stack{crates: VecDeque::from(vec!['D', 'C', 'M'])}, Stack{crates: VecDeque::from(vec!['P'])}]});
     }
 
     #[test]
     fn test_parse_input_correct_instructions() {
-        let input = read_problem_input_file("../../inputs/2022/5/practice.txt".to_owned());
+        let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
         let (_, instructions) = divide_stack_instruction(input).unwrap();
         
         assert_eq!(instructions, vec![
@@ -124,4 +165,49 @@ mod supply_stacks {
             Some(Instruction{count: 1, source: 1, destination: 2})
         ]);
     }
+
+    #[test]
+    fn test_execute_migrate_async() {
+        let (src, dest) = Stack{crates: VecDeque::from(vec!['D', 'N', 'Z'])}.migrate_async(Stack{crates: VecDeque::from(vec!['P'])}, 3).unwrap();
+        assert_eq!(src, Stack{crates: VecDeque::new()});
+        assert_eq!(dest, Stack{crates: VecDeque::from(vec!['Z', 'N', 'D', 'P'])});
+    }
+
+    #[test]
+    fn test_execute_migrate_sync() {
+        let (src, dest) = Stack{crates: VecDeque::from(vec!['D', 'N', 'Z'])}.migrate_sync(Stack{crates: VecDeque::from(vec!['P'])}, 3).unwrap();
+        assert_eq!(src, Stack{crates: VecDeque::new()});
+        assert_eq!(dest, Stack{crates: VecDeque::from(vec!['D', 'N', 'Z', 'P'])});
+    }
+
+    #[test]
+    fn test_execute_instruction_async() {
+        let state = GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['D', 'N', 'Z'])}, Stack{crates: VecDeque::from(vec!['C', 'M'])}, Stack{crates: VecDeque::from(vec!['P'])}]};
+        let new_state = Instruction{count: 3, source: 1, destination: 3}.execute(state, Stack::migrate_async).unwrap();
+        assert_eq!(new_state, GameState{stacks: vec![Stack{crates: VecDeque::new()}, Stack{crates: VecDeque::from(vec!['C', 'M'])}, Stack{crates: VecDeque::from(vec!['Z', 'N', 'D', 'P'])}]});
+    }
+
+    #[test]
+    fn test_execute_instruction_sync() {
+        let state = GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['D', 'N', 'Z'])}, Stack{crates: VecDeque::from(vec!['C', 'M'])}, Stack{crates: VecDeque::from(vec!['P'])}]};
+        let new_state = Instruction{count: 3, source: 1, destination: 3}.execute(state, Stack::migrate_sync).unwrap();
+        assert_eq!(new_state, GameState{stacks: vec![Stack{crates: VecDeque::new()}, Stack{crates: VecDeque::from(vec!['C', 'M'])}, Stack{crates: VecDeque::from(vec!['D', 'N', 'Z', 'P'])}]});
+    }
+
+    #[test]
+    fn test_execute_solve_async() {
+        let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
+        let (state, instructions) = divide_stack_instruction(input).unwrap();
+        let state = instructions.into_iter().fold(state, |state: GameState, instruction: Option<Instruction>| instruction.unwrap().execute(state, Stack::migrate_async).unwrap());
+        assert_eq!(state, GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['C'])}, Stack{crates: VecDeque::from(vec!['M'])}, Stack{crates: VecDeque::from(vec!['Z', 'N', 'D', 'P'])}]});
+    }
+
+    #[test]
+    fn test_execute_solve_sync() {
+        let input = read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
+        let (state, instructions) = divide_stack_instruction(input).unwrap();
+        let state = instructions.into_iter().fold(state, |state: GameState, instruction: Option<Instruction>| instruction.unwrap().execute(state, Stack::migrate_sync).unwrap());
+        assert_eq!(state, GameState{stacks: vec![Stack{crates: VecDeque::from(vec!['M'])}, Stack{crates: VecDeque::from(vec!['C'])}, Stack{crates: VecDeque::from(vec!['D', 'N', 'Z', 'P'])}]});
+    }
+
 }
