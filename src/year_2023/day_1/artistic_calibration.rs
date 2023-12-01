@@ -1,3 +1,4 @@
+use aho_corasick::AhoCorasick;
 use lazy_static::lazy_static;
 use regex::{Regex, Replacer, Captures};
 
@@ -34,15 +35,27 @@ fn update_digit_names(line: String) -> String {
     RE_DIGIT.replace_all(&line, DigitConverter).to_string()
 }
 
-fn capture_digits(line: String) -> Option<(u32, u32)> {
-    let digits: Vec<u32> = line.chars().filter_map(|c: char| c.to_digit(10)).collect();
+fn capture_digits(line: String) -> Option<(u8, u8)> {
+    let RE_DIGIT: &Vec<&str> = &vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+    let DIGIT: &Vec<u8> = &vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let haystack = &line;
+    let ac: AhoCorasick = AhoCorasick::builder().ascii_case_insensitive(true).build(RE_DIGIT).unwrap();
+    let digits: Vec<u8> = ac.find_overlapping_iter(haystack).map(|mat| (DIGIT[mat.pattern().as_usize()])).collect();
     match (digits.first(), digits.last()) {
         (Some(x), Some(y)) => Some((*x, *y)),
         _ => None,
     }
 }
 
-fn concat_digits(digits: Vec<u32>) -> Option<u32> {
+// fn capture_digits(line: String) -> Option<(u8, u8)> {
+//     let digits: Vec<u8> = line.chars().filter_map(|c: char| c.to_digit(10)).collect();
+//     match (digits.first(), digits.last()) {
+//         (Some(x), Some(y)) => Some((*x, *y)),
+//         _ => None,
+//     }
+// }
+
+fn concat_digits(digits: Vec<u8>) -> Option<u32> {
     let num_str = digits.into_iter().fold("".to_string(), |acc, x| acc + &x.to_string());
     num_str.parse::<u32>().ok()
 }
@@ -54,11 +67,17 @@ fn collect_calibration_values(line: String) -> Option<u32> {
     }
 }
 
-pub fn solve(lines: Vec<String>) {
-    let lines: Vec<String> = lines.into_iter().map(update_digit_names).collect();
+fn total_calibration_value(lines: Vec<String>) -> u32 {
     let cal_values: Vec<u32> = lines.into_iter().filter_map(collect_calibration_values).collect();
-    let total_val: u32 = cal_values.into_iter().sum();
-    println!("Final Calibration Value: {total_val}");
+    cal_values.into_iter().sum()
+}
+
+pub fn solve(lines: Vec<String>) {
+    let total_val: u32 = total_calibration_value(lines.clone());
+    println!("Final Calibration value for part 1: {total_val}");
+    // let lines: Vec<String> = lines.into_iter().map(update_digit_names).collect();
+    let total_val: u32 = total_calibration_value(lines.clone());
+    println!("Final Calibration value for part 2: {total_val}");
 }
 
 #[cfg(test)]
@@ -118,8 +137,8 @@ mod artistic_calibration {
     
     #[test]
     fn test_collect_calibration_values_consecutive_digit() {
-        let line = "47dhax0".to_string();
-        assert_eq!(collect_calibration_values(line), Some(40));
+        let line = "47dhax".to_string();
+        assert_eq!(collect_calibration_values(line), Some(47));
     }
 
     #[test]
@@ -141,11 +160,16 @@ mod artistic_calibration {
 
     #[test]
     fn test_update_digit_names_only_digit_str() {
-        assert_eq!(update_digit_names("eight".to_owned()), "8");
+        assert_eq!(update_digit_names("eight".to_string()), "8");
     }
 
     #[test]
     fn test_update_digit_names_consec_digit_str() {
-        assert_eq!(update_digit_names("eightninetwothree".to_owned()), "8923");
+        assert_eq!(capture_digits("eightninetwothree".to_string()), Some((8, 3)));
+    }
+
+    #[test]
+    fn test_update_digit_names_blended_digit_str() {
+        assert_eq!(capture_digits("nine11sixsixeightwonpf".to_string()), Some((9, 2)));
     }
 }
