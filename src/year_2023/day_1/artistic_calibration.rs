@@ -29,7 +29,7 @@ impl Replacer for DigitConverter {
 
 fn update_digit_names(line: String) -> String {
     lazy_static! {
-        static ref RE_DIGIT: Regex = Regex::new(r"(zero)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)").unwrap();
+        static ref RE_DIGIT: Regex = Regex::new(r"(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)").unwrap();
     }
     RE_DIGIT.replace_all(&line, DigitConverter).to_string()
 }
@@ -55,8 +55,8 @@ fn collect_calibration_values(line: String) -> Option<u32> {
 }
 
 pub fn solve(lines: Vec<String>) {
-    let lines: Vec<String> = lines.into_iter().map(|line| update_digit_names(line)).collect();
-    let cal_values: Vec<u32> = lines.into_iter().filter_map(|line| collect_calibration_values(line)).collect();
+    let lines: Vec<String> = lines.into_iter().map(update_digit_names).collect();
+    let cal_values: Vec<u32> = lines.into_iter().filter_map(collect_calibration_values).collect();
     let total_val: u32 = cal_values.into_iter().sum();
     println!("Final Calibration Value: {total_val}");
 }
@@ -81,6 +81,12 @@ mod artistic_calibration {
     fn test_capture_line_with_one_digits() {
         let line = "4abc".to_string();
         assert_eq!(capture_digits(line), Some((4, 4)));
+    }
+
+    #[test]
+    fn test_capture_line_only_digits() {
+        let line = "418023".to_string();
+        assert_eq!(capture_digits(line), Some((4, 3)));
     }
 
     #[test]
@@ -136,5 +142,10 @@ mod artistic_calibration {
     #[test]
     fn test_update_digit_names_only_digit_str() {
         assert_eq!(update_digit_names("eight".to_owned()), "8");
+    }
+
+    #[test]
+    fn test_update_digit_names_consec_digit_str() {
+        assert_eq!(update_digit_names("eightninetwothree".to_owned()), "8923");
     }
 }
