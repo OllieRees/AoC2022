@@ -4,6 +4,7 @@ mod input;
 use input::*;
 
 mod year_2022;
+mod year_2023;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ParseLineError;
@@ -40,6 +41,13 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
                 _ => None,
             }
         },
+        2023 => {
+            use crate::year_2023::*;
+            match day {
+                1 => Some(day_1::artistic_calibration::solve),
+                _ => None,
+            }
+        }
         _ => None,
     }
 }
