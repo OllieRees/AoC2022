@@ -13,12 +13,14 @@ struct ParseLineError;
 struct ParseInputError;
 
 enum AnswerMode {
+    BigBoy,
     Real,
 }
 
 fn get_file_path(solution_type: AnswerMode, year: u32, day: u8) -> String {
     match solution_type {
         AnswerMode::Real => format!("inputs/{year}/{day}/real.txt").to_owned(),
+        AnswerMode::BigBoy => format!("inputs/{year}/{day}/bigboy.txt").to_owned(),
     }
 }
 
