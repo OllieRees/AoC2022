@@ -119,4 +119,58 @@ mod cube_conundrum {
         let round = "3 blue".parse::<Round>().unwrap();
         assert_eq!(round, Round {red: 0, blue: 3, green: 0});
     }
+
+    #[test]
+    fn test_least_red() {
+        let game = "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.least_red_count(), 14);
+    }
+
+    #[test]
+    fn test_no_red() {
+        let game = "Game 4: 1 green, 6 blue; 3 green; 3 green, 15 blue".parse::<Game>().unwrap();
+        assert_eq!(game.least_red_count(), 0);
+    }
+
+    #[test]
+    fn test_least_green() {
+        let game = "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.least_green_count(), 3);
+    }
+
+    #[test]
+    fn test_no_green() {
+        let game = "Game 4: 3 red, 6 blue; 6 red; 15 blue, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.least_green_count(), 0);
+    }
+
+    #[test]
+    fn test_least_blue() {
+        let game = "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.least_blue_count(), 15);
+    }
+
+    #[test]
+    fn test_no_blue() {
+        let game = "Game 4: 1 green, 3 red; 3 green, 6 red; 3 green, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.least_blue_count(), 0);
+    }
+
+    #[test]
+    fn test_powerset() {
+        let game = "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red".parse::<Game>().unwrap();
+        assert_eq!(game.power_set(), 630);
+    }
+
+    #[test]
+    fn test_powerset_one_round() {
+        let game = "Game 4: 1 green, 3 red, 3 blue".parse::<Game>().unwrap();
+        assert_eq!(game.power_set(), 9);
+    }
+
+    #[test]
+    fn test_powerset_one_round_missing_colour() {
+        let game = "Game 4: 1 green, 3 red".parse::<Game>().unwrap();
+        assert_eq!(game.power_set(), 0);
+    }
 }
