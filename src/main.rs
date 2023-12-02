@@ -45,6 +45,7 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
             use crate::year_2023::*;
             match day {
                 1 => Some(day_1::artistic_calibration::solve),
+                2 => Some(day_2::cube_conundrum::solve),
                 _ => None,
             }
         }
