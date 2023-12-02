@@ -46,29 +46,6 @@ impl FromStr for Game {
     }
 }
 
-// Not really necessary since the map used when parsing the round can be a map
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum Colour {
-    Red,
-    Blue,
-    Green,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct ParseColourError;
-impl FromStr for Colour {
-    type Err = ParseColourError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "red" => Ok(Colour::Red),
-            "blue" => Ok(Colour::Blue),
-            "green" => Ok(Colour::Green),
-            _ => Err(ParseColourError),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Round {
     red: u32,
@@ -76,35 +53,36 @@ struct Round {
     green: u32,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct ParseRoundError;
 impl FromStr for Round {
-    type Err = ParseRoundError;
+    type Err = ParseGameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parse_colour = | colour: &str| {
             let (count, colour) = colour.split_whitespace().collect_tuple::<(&str, &str)>().unwrap_or(("no number", "no colour"));
-            match (count.parse::<u32>(), colour.parse::<Colour>()) {
-                (Ok(count), Ok(colour)) => Ok((colour, count)),
-                _ => Err(ParseRoundError),
+            match (count.parse::<u32>(), colour.to_lowercase()) {
+                (Ok(count), colour) => Ok((colour, count)),
+                _ => Err(ParseGameError),
             }
         };
-        match s.split(",").map(parse_colour).collect::<Result<Vec<(Colour, u32)>, _>>() {
+        match s.split(",").map(parse_colour).collect::<Result<Vec<(String, u32)>, _>>() {
             Ok(colours) => {
-                let colours: HashMap<Colour, u32> = colours.into_iter().collect();
-                Ok(Round { red: *colours.get(&Colour::Red).unwrap_or(&0), blue: *colours.get(&Colour::Blue).unwrap_or(&0), green: *colours.get(&Colour::Green).unwrap_or(&0) })
+                let colours: HashMap<String, u32> = colours.into_iter().collect();
+                Ok(Round { red: *colours.get(&"red".to_string()).unwrap_or(&0), blue: *colours.get(&"blue".to_string()).unwrap_or(&0), green: *colours.get(&"green".to_string()).unwrap_or(&0) })
             },
-            _ => Err(ParseRoundError),
+            _ => Err(ParseGameError),
         }
     }
 }
 
 pub fn solve(lines: Vec<String>) {
-    if let Ok(games) = lines.into_iter().map(|s| s.parse::<Game>()).collect::<Result<Vec<Game>, ParseGameError>>() {
-        let score = games.iter().filter(|game: &&Game|game.least_red_count() <= 12 && game.least_blue_count() <= 14 && game.least_green_count() <= 13).fold(0, |acc, x| acc + x.id);
-        println!("ID Sum of Games that could have 12 red, 13 green and 14 blue balls: {score}");
-        let score: u32 = games.iter().map(|game| game.power_set()).sum();
-        println!("Total Powerset of the Games: {score}");
+    match lines.into_iter().map(|s| s.parse::<Game>()).collect::<Result<Vec<Game>, ParseGameError>>() {
+        Ok(games) => {
+            let score: u32 = games.iter().filter(|game: &&Game|game.least_red_count() <= 12 && game.least_blue_count() <= 14 && game.least_green_count() <= 13).fold(0, |acc, x| acc + x.id);
+            println!("ID Sum of Games that could have 12 red, 13 green and 14 blue balls: {score}");
+            let score: u32 = games.iter().map(|game| game.power_set()).sum();
+            println!("Total Powerset of the Games: {score}");
+        },
+        Err(e) => eprintln!("Could not parse file. Error: {:?}", e),
     }
 }
 
@@ -122,6 +100,12 @@ mod cube_conundrum {
     fn test_parse_game_missing_colour() {
         let game = "Game 1: 3 blue, 4 red; 1 red, 6 blue; 2 red".parse::<Game>().unwrap();
         assert_eq!(game, Game { id: 1, rounds: vec![Round{red: 4, blue: 3, green: 0}, Round{red: 1, blue: 6, green: 0}, Round{red: 2, blue: 0, green: 0}] });
+    }
+
+    #[test]
+    fn test_parse_game_one_round() {
+        let game = "Game 1: 3 blue, 4 red".parse::<Game>().unwrap();
+        assert_eq!(game, Game { id: 1, rounds: vec![Round{red: 4, blue: 3, green: 0}] });
     }
 
     #[test]
