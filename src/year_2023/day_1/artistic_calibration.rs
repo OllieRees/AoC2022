@@ -21,9 +21,10 @@ impl DigitCapture for DigitNames {
         let re_digit = &["1", "2", "3", "4", "5", "6", "7", "8", "9", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
         let digit = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9];
         let ac: AhoCorasick = AhoCorasick::builder().ascii_case_insensitive(true).build(re_digit).unwrap();
-        let caps: Vec<_> = ac.find_overlapping_iter(&line).collect();
-        match (caps.first(), caps.last()) {
+        let mut caps = ac.find_overlapping_iter(&line);
+        match (caps.next(), caps.last()) {
             (Some(x), Some(y)) => Some((digit[x.pattern().as_usize()], digit[y.pattern().as_usize()])),
+            (Some(x), None) => Some((digit[x.pattern().as_usize()], digit[x.pattern().as_usize()])),
             _ => None,
         }
     } 
