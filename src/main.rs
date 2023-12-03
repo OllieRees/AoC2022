@@ -46,6 +46,7 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
             match day {
                 1 => Some(day_1::artistic_calibration::solve),
                 2 => Some(day_2::cube_conundrum::solve),
+                3 => Some(day_3::gear_ratio::solve),
                 _ => None,
             }
         }
