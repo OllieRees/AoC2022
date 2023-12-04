@@ -125,7 +125,7 @@ fn divide_stack_instruction(input: Vec<String>) -> Result<(GameState, Vec<Instru
             return Ok((state, instructions));
         }
     }
-    Err(ParseInputError)
+    Err(ParseInputError {details: "Could not split the stack and instruction".to_string()})
 }
 
 pub fn solve(lines: Vec<String>) {

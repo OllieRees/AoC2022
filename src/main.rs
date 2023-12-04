@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, fmt::Display, error::Error, num::ParseIntError};
 
 mod input;
 use input::*;
@@ -7,10 +7,33 @@ mod year_2022;
 mod year_2023;
 
 #[derive(Debug, PartialEq, Eq)]
-struct ParseLineError;
+struct ParseInputError {
+    details: String,
+}
 
-#[derive(Debug, PartialEq, Eq)]
-struct ParseInputError;
+impl Display for ParseInputError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Parse Error: {}", {self.details.clone()})
+    }
+}
+
+impl Error for ParseInputError {
+    fn description(&self) -> &str {
+        self.details.as_str()
+    }
+}
+
+impl From<ParseIntError> for ParseInputError {
+    fn from(value: ParseIntError) -> Self {
+        ParseInputError { details: value.to_string() }
+    }
+}
+
+impl From<regex::Error> for ParseInputError {
+    fn from(value: regex::Error) -> Self {
+        ParseInputError { details: value.to_string() }
+    }
+}
 
 enum AnswerMode {
     Real,
