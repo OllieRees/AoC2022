@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use std::{str::FromStr, collections::HashSet};
+use std::{str, collections};
 
 use crate::ParseInputError;
 
@@ -12,8 +12,8 @@ struct Card {
 
 impl Card {
     fn count_winning_numbers(&self) -> u32 {
-        let my_numbers: HashSet<u32> = HashSet::from_iter(self.my_numbers.clone());
-        let winning_numbers: HashSet<u32> = HashSet::from_iter(self.winning_numbers.clone());
+        let my_numbers: collections::HashSet<u32> = collections::HashSet::from_iter(self.my_numbers.clone());
+        let winning_numbers: collections::HashSet<u32> = collections::HashSet::from_iter(self.winning_numbers.clone());
         my_numbers.intersection(&winning_numbers).count() as u32
     }
 
@@ -30,7 +30,7 @@ impl Card {
     }
 }
 
-impl FromStr for Card {
+impl str::FromStr for Card {
     type Err = ParseInputError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -52,6 +52,20 @@ impl FromStr for Card {
     }
 }
 
+fn copies_table(cards: &Vec<Card>) -> collections::HashMap<u32, Vec<u32>> {
+    cards.into_iter().map(|card| (card.id, card.cards_ids_won())).collect()
+}
+
+// fast data struct method
+fn copies_count(card_id: u32, copies_table: &collections::HashMap<u32, Vec<u32>>) -> u32 {
+    let copies: &Vec<u32> = copies_table.get(&card_id).unwrap();
+    if copies.len() == 0 {
+        return 0; 
+    }
+    copies.len() as u32 + copies.into_iter().map(|copy| copies_count(*copy, copies_table)).sum::<u32>()
+}
+
+// slow recursive methods
 fn copies_won(card: &Card, cards: &Vec<Card>) -> u32 {
     let cards_won: Vec<u32> = card.cards_ids_won();
     cards_won.len() as u32 + cards_won.into_iter().map(|card_id: u32| { 
@@ -67,7 +81,8 @@ pub fn solve(lines: Vec<String>) {
     if let Ok(cards) = cards {
         let total_points: u32 = cards.iter().map(|card| card.point()).sum();
         println!("Total Points: {total_points}");
-        let total_cards_won: u32 = cards.iter().map(|card| 1 + copies_won(card, &cards)).sum();
+        let copies_table = copies_table(&cards);
+        let total_cards_won: u32 = cards.iter().map(|card| 1 + copies_count(card.id, &copies_table)).sum();
         println!("Total Cards Won: {total_cards_won}");
     }
 }
@@ -147,14 +162,28 @@ mod scratchcards {
     }
 
     #[test]
-    fn test_card_winnings() {
+    fn test_copies_win_count() {
         let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
         assert_eq!(copies_won(cards.get(2).unwrap(), &cards), 3);
     }
 
     #[test]
-    fn test_card_winnings_losing_card() {
+    fn test_copies_win_count_with_no_winning_number_card() {
         let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
         assert_eq!(copies_won(cards.get(4).unwrap(), &cards), 0);
+    }
+
+    #[test]
+    fn test_copies_win_count_with_table() {
+        let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
+        let copies_table = copies_table(&cards);
+        assert_eq!(copies_count(cards.get(2).unwrap().id, &copies_table), 3);
+    }
+
+    #[test]
+    fn test_copies_win_count_with_no_winning_number_card_with_table() {
+        let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
+        let copies_table = copies_table(&cards);
+        assert_eq!(copies_count(cards.get(4).unwrap().id, &copies_table), 0);
     }
 }
