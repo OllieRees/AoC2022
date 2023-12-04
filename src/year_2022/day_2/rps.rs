@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use crate::ParseLineError;
+use crate::ParseInputError;
 
 #[derive(Debug, PartialEq, Eq)]
 struct ParseMoveError;
@@ -123,15 +123,15 @@ impl Round {
     }
 }
 
-fn parse_line<L, R>(line: &str, parse_left: impl Fn(&str) -> Option<L>, parse_right: impl Fn(&str) -> Option<R>) -> Result<(L, R), ParseLineError> {
+fn parse_line<L, R>(line: &str, parse_left: impl Fn(&str) -> Option<L>, parse_right: impl Fn(&str) -> Option<R>) -> Result<(L, R), ParseInputError> {
     match line.split_whitespace().collect_tuple::<(&str, &str)>() {
         Some((left_token, right_token)) => {
             match (parse_left(left_token), parse_right(right_token)) {
                 (Some(x), Some(y)) => Ok((x, y)),
-                _ => Err(ParseLineError),
+                _ => Err(ParseInputError {details: "Failed to parse tokens".to_string()}),
             }
         },
-        _ => Err(ParseLineError),
+        _ => Err(ParseInputError {details: format!("Line was incorrectly formatted: could not split {} into two by whitespace", line)}),
     }
 } 
 
