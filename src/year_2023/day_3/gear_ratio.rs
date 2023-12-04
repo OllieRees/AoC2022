@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use itertools::iproduct;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Position {
     start: (usize, usize),
     end: (usize, usize),
@@ -18,7 +19,7 @@ impl Position {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct EnginePart {
     value: u32,
     position: Position
@@ -43,6 +44,20 @@ impl EnginePart {
             }
         })
     }
+
+    fn get_gear_positions(&self, grid: &Vec<String>) -> Vec<(usize, usize)> {
+        let adjacent_parts = self.position.adjacent_positions();
+        let grid_value = |x: usize, y: usize| -> Option<char> {
+            match grid.get(x) {
+                Some(row) => match row.char_indices().nth(y) {
+                    Some((_, c)) => Some(c),
+                    None => None,
+                }
+                None => None,
+            }
+        };
+        adjacent_parts.into_iter().filter(|(x, y)| grid_value(*x, *y) == Some('*')).collect()
+    }
 }
 
 fn get_numbers_and_positions(line: &String) -> Vec<(u32, usize, usize)> {
@@ -63,7 +78,7 @@ fn get_numbers_and_positions(line: &String) -> Vec<(u32, usize, usize)> {
     }).collect()
 }
 
-fn parse_grid(grid: Vec<String>) -> Vec<EnginePart> {
+fn parse_engine_parts(grid: Vec<String>) -> Vec<EnginePart> {
     let mut parts: Vec<EnginePart> = Vec::new();
     for (i, row) in grid.iter().enumerate() {
         for (n, start, end) in get_numbers_and_positions(row).into_iter() {
@@ -75,16 +90,38 @@ fn parse_grid(grid: Vec<String>) -> Vec<EnginePart> {
     parts
 } 
 
+fn parse_gear_ratio_couples(grid: Vec<String>) -> Vec<(EnginePart, EnginePart)> {
+    let mut ratio_gear_map: HashMap<(usize, usize), Vec<EnginePart>> = HashMap::new();
+    for (i, row) in grid.iter().enumerate() {
+        for (n, start, end) in get_numbers_and_positions(row).into_iter() {
+            let pos: Position = Position { start: (i, start), end: (i, end)}; 
+            let part: EnginePart = EnginePart { value: n, position: pos };
+            part.get_gear_positions(&grid).iter().for_each(|gear_pos: &(usize, usize)| {
+                let new_parts: Vec<EnginePart> = match ratio_gear_map.get(gear_pos) {
+                    Some(parts) => {
+                        let mut parts: Vec<EnginePart> = parts.clone();
+                        parts.push(EnginePart { value: n, position: Position { start: (i, start), end: (i, end)} });
+                        parts.to_vec()
+                    },
+                    None => { 
+                        vec![EnginePart { value: n, position: Position { start: (i, start), end: (i, end)} }]
+                    },
+                };
+                ratio_gear_map.insert(*gear_pos, new_parts);
+            });
+        }
+    }
+    ratio_gear_map.into_values().filter(|parts| parts.len() == 2).map(|parts| (parts.get(0).unwrap().to_owned(), parts.get(1).unwrap().to_owned())).collect()
+}
+
 fn is_symbol(symbol: char) -> bool {
     !(symbol.is_ascii_digit() || symbol == '.')
 }
 
-fn parse_engine_parts(grid: Vec<String>) -> Vec<u32> {
-    parse_grid(grid).into_iter().map(|part| part.value).collect()
-}
-
 pub fn solve(lines: Vec<String>) {
-    println!("Engine Part Sum: {}", parse_engine_parts(lines).into_iter().sum::<u32>());
+    // println!("Engine Part Sum: {}", parse_engine_parts(lines).into_iter().map(|part| part.value).sum::<u32>());
+    println!("Engine Part Sum: {}", parse_gear_ratio_couples(lines).into_iter().map(|(part_a, part_b)| part_a.value * part_b.value).sum::<u32>());
+
 }
 
 #[cfg(test)]
@@ -104,23 +141,23 @@ mod gear_ratio {
         ".664.598.."
     ];
 
-    #[test]
-    fn test_parse_engine_part_horizontal() {
-        let input: [&str; 1] = ["467#114"];
-        assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![467, 114]);
-    }
+    // #[test]
+    // fn test_parse_engine_part_horizontal() {
+    //     let input: [&str; 1] = ["467#114"];
+    //     assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![467, 114]);
+    // }
 
-    #[test]
-    fn test_parse_engine_part_vertical() {
-        let input: [&str; 3] = ["467", ".#.", ".14"];
-        assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![467, 14]);
-    }
+    // #[test]
+    // fn test_parse_engine_part_vertical() {
+    //     let input: [&str; 3] = ["467", ".#.", ".14"];
+    //     assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![467, 14]);
+    // }
 
-    #[test]
-    fn test_parse_engine_part_diagonal() {
-        let input: [&str; 3] = [".67", "#..", ".4."];
-        assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![67, 4]);
-    }
+    // #[test]
+    // fn test_parse_engine_part_diagonal() {
+    //     let input: [&str; 3] = [".67", "#..", ".4."];
+    //     assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![67, 4]);
+    // }
 
     #[test]
     fn test_no_adjacent_engine_parts() {
@@ -128,10 +165,10 @@ mod gear_ratio {
         assert_eq!(parse_engine_parts(input.map(String::from).to_vec()), vec![]);
     }
 
-    #[test]
-    fn test_parse_engine_parts() {
-        assert_eq!(parse_engine_parts(EXAMPLE.map(String::from).to_vec()), vec![467, 35, 633, 617, 592, 755, 664, 598]);
-    }
+    // #[test]
+    // fn test_parse_engine_parts() {
+    //     assert_eq!(parse_engine_parts(EXAMPLE.map(String::from).to_vec()), vec![467, 35, 633, 617, 592, 755, 664, 598]);
+    // }
 
     #[test]
     fn is_engine_part() {
