@@ -1,6 +1,6 @@
-use aho_corasick::AhoCorasick;
 use itertools::iproduct;
 
+#[derive(Debug, PartialEq, Eq)]
 struct Position {
     start: (usize, usize),
     end: (usize, usize),
@@ -18,6 +18,7 @@ impl Position {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct EnginePart {
     value: u32,
     position: Position
@@ -25,7 +26,6 @@ struct EnginePart {
 
 impl EnginePart {
     fn is_engine_part(&self, grid: &Vec<String>) -> bool {
-        // get adjacent parts
         let adjacent_parts = self.position.adjacent_positions();
         let grid_value = |x: usize, y: usize| -> Option<char> {
             match grid.get(x) {
@@ -46,14 +46,21 @@ impl EnginePart {
 }
 
 fn get_numbers_and_positions(line: &String) -> Vec<(u32, usize, usize)> {
-    let number_strs: Vec<&str> = line.split(|c: char| !c.is_digit(10)).filter(|s| !s.is_empty()).collect();
-    let ac = AhoCorasick::new(number_strs.clone()).unwrap();
-    let mut matches: Vec<(u32, usize, usize)> = vec![];
-    for mat in ac.find_iter(&line) {
-        let n: u32 = number_strs.get(mat.pattern().as_usize()).unwrap().to_string().parse::<u32>().unwrap();
-        matches.push((n, mat.start(), mat.end() - 1));
-    }
-    matches
+    let mut counter: usize = 0;
+    let mut drained_line = line.clone();
+    let substrings: Vec<&str> = line.split(|c: char| !c.is_digit(10)).filter(|s| !s.is_empty()).collect();
+    substrings.into_iter().filter_map(|substr: &str| {
+        match (substr.parse::<u32>().ok(), drained_line.find(substr)) {
+            (Some(val), Some(pos)) => {
+                let final_digit_index: usize = pos + substr.len() - 1;
+                let drained_str = drained_line.drain(0..=final_digit_index);
+                let x = Some((val, counter + pos, counter + final_digit_index));
+                counter += drained_str.count();
+                x
+            },
+            _ => None,
+        }
+    }).collect()
 }
 
 fn parse_grid(grid: Vec<String>) -> Vec<EnginePart> {
@@ -71,16 +78,6 @@ fn parse_grid(grid: Vec<String>) -> Vec<EnginePart> {
 fn is_symbol(symbol: char) -> bool {
     !(symbol.is_ascii_digit() || symbol == '.')
 }
-
-// fn symbol_positions(grid: Vec<String>) -> Vec<(usize, usize)> {
-//     let get_symbol_positions = |s: String| -> Vec<usize> {
-//         s.char_indices().filter_map(|(c_i, c)| if is_symbol(c) {Some(c_i)} else {None}).collect()
-//     };
-//     let get_grid_positions_from_row = | (i, s): (usize, String)| -> Vec<(usize, usize)> {
-//         iter::repeat(i).zip(get_symbol_positions(s)).collect()
-//     };
-//     grid.into_iter().enumerate().map(get_grid_positions_from_row).flatten().collect()
-// }
 
 fn parse_engine_parts(grid: Vec<String>) -> Vec<u32> {
     parse_grid(grid).into_iter().map(|part| part.value).collect()
@@ -152,6 +149,18 @@ mod gear_ratio {
     fn test_numbers_and_positions() {
         let line = "467..114..".to_string();
         assert_eq!(get_numbers_and_positions(&line), vec![(467, 0, 2), (114, 5, 7)]);
+    }
+
+    #[test]
+    fn test_single_digit_duplicated() {
+        let line = "467...4...".to_string();
+        assert_eq!(get_numbers_and_positions(&line), vec![(467, 0, 2), (4, 6, 6)]);
+    }
+
+    #[test]
+    fn test_numbers_and_positions_duplicates() {
+        let line = "467..467..".to_string();
+        assert_eq!(get_numbers_and_positions(&line), vec![(467, 0, 2), (467, 5, 7)]);
     }
 
     #[test]
