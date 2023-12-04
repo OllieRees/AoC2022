@@ -26,7 +26,7 @@ impl Card {
     }
 
     fn cards_ids_won(&self) -> Vec<u32> {
-        (1..=self.count_winning_numbers()).map(|x| x + self.id).collect()
+        ((self.id + 1)..=(self.id+self.count_winning_numbers())).collect()
     }
 }
 
