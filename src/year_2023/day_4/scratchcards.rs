@@ -66,11 +66,11 @@ fn copies_count(card_id: u32, copies_table: &collections::HashMap<u32, Vec<u32>>
 }
 
 // slow recursive methods
-fn copies_won(card: &Card, cards: &Vec<Card>) -> u32 {
+fn _copies_won(card: &Card, cards: &Vec<Card>) -> u32 {
     let cards_won: Vec<u32> = card.cards_ids_won();
     cards_won.len() as u32 + cards_won.into_iter().map(|card_id: u32| { 
         match cards.into_iter().nth(card_id as usize - 1) {
-            Some(card_copy) => copies_won(card_copy, cards),
+            Some(card_copy) => _copies_won(card_copy, cards),
             None => 0,
         }
     }).sum::<u32>()
@@ -164,13 +164,13 @@ mod scratchcards {
     #[test]
     fn test_copies_win_count() {
         let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
-        assert_eq!(copies_won(cards.get(2).unwrap(), &cards), 3);
+        assert_eq!(_copies_won(cards.get(2).unwrap(), &cards), 3);
     }
 
     #[test]
     fn test_copies_win_count_with_no_winning_number_card() {
         let cards: Vec<Card> = EXAMPLE.into_iter().map(|line| line.parse::<Card>().unwrap()).collect();
-        assert_eq!(copies_won(cards.get(4).unwrap(), &cards), 0);
+        assert_eq!(_copies_won(cards.get(4).unwrap(), &cards), 0);
     }
 
     #[test]
