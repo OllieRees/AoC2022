@@ -15,7 +15,7 @@ fn execute_range(x: u64, range: Range) -> u64 {
 }
 fn seed_location(seed: u64, mappings: &Vec<Vec<Range>>) -> u64 {
     let get_next_value = |seed: u64, ranges: &Vec<Range>| -> u64 {
-        match ranges.iter().filter(|range: &&(u64, u64, u64)| is_in_range(seed, **range)).nth(0) {
+        match ranges.iter().find(|range: &&(u64, u64, u64)| is_in_range(seed, **range)) {
             Some(range) => execute_range(seed, *range),
             None => seed,
         }
