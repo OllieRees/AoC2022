@@ -15,10 +15,6 @@ fn execute_range(x: u64, range: Range) -> u64 {
 }
 fn seed_location(seed: u64, mappings: &Vec<Vec<Range>>) -> u64 {
     let get_next_value = |seed: u64, ranges: &Vec<Range>| -> u64 {
-        let x = ranges.iter().filter(|range: &&(u64, u64, u64)| is_in_range(seed, **range));
-        if x.collect::<Vec<_>>().len() > 1 {
-            println!("They overlap at {:?} for {}", ranges, seed);
-        }
         match ranges.iter().filter(|range: &&(u64, u64, u64)| is_in_range(seed, **range)).nth(0) {
             Some(range) => execute_range(seed, *range),
             None => seed,
