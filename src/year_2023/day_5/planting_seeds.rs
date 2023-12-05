@@ -3,21 +3,11 @@ use itertools::Itertools;
 use crate::ParseInputError;
 
 fn group_mappings(lines: Vec<String>) -> Result<[Vec<String>; 8], ParseInputError> {
-    Err(ParseInputError { details: "X".to_string() })
-}
-
-fn parse_map(line: String) -> Result<impl Fn(u64) -> u64, ParseInputError> {
-    let (dest_start, src_start, range_size): (&str, &str, &str) = line.split_whitespace().collect_tuple().ok_or(
-        ParseInputError{details: "Mapping did not have exactly 3 numbers".to_string()}
-    )?;
-    let (dest_start, src_start, range_size) = (dest_start.parse::<u64>()?, src_start.parse::<u64>()?, range_size.parse::<u64>()?);
-
-    Ok(move |x: u64| -> u64 {
-        if x < src_start || x - src_start > range_size {
-            return x;
-        }
-        dest_start + x - src_start
-    })
+    let lines: Result<[Vec<String>; 8], _> = lines.split(|line| line == "").map(|line| line.to_vec()).collect::<Vec<_>>().try_into();
+    match lines {
+        Ok(x) => Ok(x),
+        _ => Err(ParseInputError{ details: "Input does not have 8 groups".to_string() })
+    }
 }
 
 fn seed_location(seed: u64, maps: Vec<impl Fn(u64) -> u64>) -> u64 {
@@ -36,7 +26,7 @@ pub mod planting_seeds {
     
     #[test]
     fn test_grouping_input_by_mapping() {
-        let example: Vec<String >= read_problem_input_file("inputs/2022/5/practice.txt".to_owned());
+        let example: Vec<String >= read_problem_input_file("inputs/2023/5/practice.txt".to_owned());
         assert_eq!(group_mappings(example), Ok([
             vec!["seeds: 79 14 55 13".to_string()],
             vec!["seed-to-soil map:".to_string(), "50 98 2".to_string(), "52 50 48".to_string()],
@@ -49,34 +39,16 @@ pub mod planting_seeds {
         ]));
     }
 
-    #[test]
-    fn test_parsing_a_map() {
-        let map: String = "50 98 2".to_string();
-        assert_eq!(parse_map(map).unwrap()(98), 50);
-    }
+    // #[test]
+    // fn test_parse_mapping() {
+    //     let input = vec!["soil-to-fertilizer map:".to_string(), "0 15 37".to_string(), "37 52 2".to_string(), "39 0 15".to_string()];
+    //     assert_eq!(parse_mapping(input), Ok(vec![(15, 0, 37), (52, 37, 2), (0, 39, 15)]));
+    // }
 
-    #[test]
-    fn test_parsing_a_map_with_superfluous_spaces() {
-        let map: String = "52     50   48".to_string();
-        assert_eq!(parse_map(map).unwrap()(53), 55);
-    }
+    // #[test]
+    // fn test_parse_bad_mapping() {
+    //     let input = vec!["soil-to-fertilizer map:".to_string(), "0 15 37 2".to_string()];
+    //     assert!(parse_mapping(input).is_err());
+    // }
 
-    #[test]
-    fn test_input_is_below_src_start() {
-        let map: String = "52 50 48".to_string();
-        assert_eq!(parse_map(map).unwrap()(5), 5);
-    }
-
-
-    #[test]
-    fn test_parsing_a_map_with_2_numbers() {
-        let map: String = "50 98".to_string();
-        assert!(parse_map(map).is_err());
-    }
-    
-    #[test]
-    fn test_parsing_a_map_with_4_numbers() {
-        let map: String = "50 98 2 3".to_string();
-        assert!(parse_map(map).is_err());
-    }
 }
