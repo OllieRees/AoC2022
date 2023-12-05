@@ -2,21 +2,14 @@ use super::parse_input::parse;
 
 type Range = (u64, u64, u64);
 
-// the actual logic to solve the puzzles
 fn is_in_range(x: u64, range: Range) -> bool {
     x >= range.0 && x < range.0 + range.2
 }
 
-fn execute_range(x: u64, range: Range) -> u64 {
-    match x < range.0 || range.0 + range.2 < x {
-        true => x,
-        false => range.1 + (x - range.0),
-    }
-}
 fn seed_location(seed: u64, mappings: &Vec<Vec<Range>>) -> u64 {
     let get_next_value = |seed: u64, ranges: &Vec<Range>| -> u64 {
         match ranges.iter().find(|range: &&(u64, u64, u64)| is_in_range(seed, **range)) {
-            Some(range) => execute_range(seed, *range),
+            Some(range) => range.1 + (seed - range.0),
             None => seed,
         }
     };
@@ -32,13 +25,10 @@ pub fn solve(lines: Vec<String>) {
         println!("Minimum Location {}", seeds.iter().map(|seed| seed_location(*seed, &mappings)).min().unwrap());
         let seeds: Vec<(u64, u64)> = seeds.chunks(2).map(|x| (x[0], x[1])).collect();
         let mappings: Vec<Vec<Range>> = reverse_mapping(mappings);
-        for location in 1.. {
-            let seed: u64 = seed_location(location, &mappings);
-            if seeds.iter().any(|(s, n)| seed >= *s && seed < s + n) {
-                println!("Lowest location {}", location);
-                break;
-            }
-        }
+        println!("Minimum Location whe Seeds are Ranges {}", (1..).find(|location: &u64| {
+            let seed: u64 = seed_location(*location, &mappings);
+            seeds.iter().any(|(s, n)| seed >= *s && seed < s + n)
+        }).unwrap());
     }
 }
 
