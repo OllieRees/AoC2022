@@ -69,8 +69,8 @@ pub fn solve(lines: Vec<String>) {
         let seeds: Vec<(u64, u64)> = seeds.chunks(2).map(|x| (x[0], x[1])).collect();
         let mappings: Vec<Vec<Range>> = reverse_mapping(mappings);
         for location in 1.. {
-            let seed = seed_location(location, &mappings);
-            if seeds.iter().find(|(s, n)| seed >= *s && seed < s + n).is_some() {
+            let seed: u64 = seed_location(location, &mappings);
+            if seeds.iter().any(|(s, n)| seed >= *s && seed < s + n) {
                 println!("Lowest location {}", location);
                 break;
             }
