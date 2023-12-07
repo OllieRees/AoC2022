@@ -26,7 +26,8 @@ fn parse_mapping(ranges: Vec<String>) -> Result<Vec<Range>, ParseInputError> {
         )?;
         Ok((src_start.parse::<u64>()?, dest_start.parse::<u64>()?, range_size.parse::<u64>()?))
     };
-    ranges.into_iter().map(parse_range).collect()
+    let ranges: Vec<Range> = ranges.into_iter().map(parse_range).collect::<Result<Vec<Range>, _>>()?;
+    Ok(ranges.into_iter().sorted_by(|range_a: &(u64, u64, u64), range_b: &(u64, u64, u64)| range_a.1.cmp(&range_b.1)).collect())
 }
 
 pub fn parse(lines: Vec<String>) -> Result<(Vec<u64>, Vec<Vec<Range>>), ParseInputError> {

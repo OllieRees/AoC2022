@@ -1,9 +1,27 @@
+use std::collections::VecDeque;
+
+use itertools::Itertools;
+
 use super::parse_input::parse;
 
 type Range = (u64, u64, u64);
 
 fn is_in_range(x: u64, range: Range) -> bool {
     x >= range.0 && x < range.0 + range.2
+}
+
+fn generate_input_range(output_range: Range, ranges: &Vec<Range>) -> Vec<Range> {
+    // the range {15..51} has two potential domains for seed-to-soil: {15..49} and {98, 99}
+    Vec::new()
+}
+
+fn generate_input_ranges(init_range: Vec<Range>, next_range: Vec<Range>) -> VecDeque<Vec<Range>> {
+    next_range.into_iter().map(|range: (u64, u64, u64)| generate_input_range(range, &init_range)).collect::<VecDeque<_>>()
+}
+
+fn generate_best_seed_ranges(seeds: Vec<u64>, ranges: Vec<Vec<Range>>) {
+    // fold on each range in ranges such that generate_input_ranges is called on each range starting from the last range
+    // for each range in seed ranges check if any seed exists in the range
 }
 
 fn seed_location(seed: u64, mappings: &Vec<Vec<Range>>) -> u64 {
