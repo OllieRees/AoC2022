@@ -11,16 +11,16 @@ enum Card {
     Queen, 
     Jack, 
     Tens,
-    Digit (u8)
+    Digit (u8),
+    Joker, 
 }
-impl TryFrom<char> for Card {
-    type Error = ParseInputError; 
-    fn try_from(value: char) -> Result<Self, Self::Error> {
+impl Card {
+    fn try_from(value: char, j_card: Card) -> Result<Self, ParseInputError> {
         match value.to_ascii_uppercase() {
             'A' => Ok(Card::Ace),
             'K' => Ok(Card::King),
             'Q' => Ok(Card::Queen),
-            'J' => Ok(Card::Jack),
+            'J' => Ok(j_card), // could be jack
             'T' => Ok(Card::Tens),
             _ => {
                 match value.to_digit(10) {
@@ -34,12 +34,13 @@ impl TryFrom<char> for Card {
 impl Into<u8> for Card {
     fn into(self) -> u8 {
         match self {
+            Card::Joker => 1,
             Card::Digit(x) => x,
             Card::Tens => 10,
             Card::Jack => 11,
             Card::Queen => 12,
             Card::King => 13,
-            Card::Ace => 14
+            Card::Ace => 14,
         }
     }
 }
@@ -73,16 +74,27 @@ enum Type {
 impl Type {
     fn determine_type(cards: Cards) -> Self {
         let count_frequency = |card: Card| -> usize { cards.into_iter().filter(|x: &Card| *x == card).count() };
-        let frequencies: Vec<usize> = collections::HashSet::from(cards).into_iter().map(count_frequency).sorted().collect::<Vec<usize>>();  // if sort is too expensive, then use another method
-        match frequencies[..] {
-            [5] => Type::FiveOfAKind,           // has 5
-            [1, 4] => Type::FourOfAKind,        // has 4
-            [2, 3] => Type::FullHouse,          // has 2 and 3
-            [1, 1, 3] => Type::ThreeOfAKind,    // has 3
-            [1, 2, 2] => Type::TwoPair,         // has 2 and 2
-            [1, 1, 1, 2] => Type::OnePair,      // has 1 of 2
-            _ => Type::HighCard,                // 5 of 1
+        let frequencies: Vec<usize> = collections::HashSet::from(cards).into_iter().map(count_frequency).sorted().collect::<Vec<usize>>();  
+        let mut hand_type: Self = match frequencies[..] {
+            [5] => Self::FiveOfAKind,           
+            [1, 4] => Self::FourOfAKind,        
+            [2, 3] => Self::FullHouse,          
+            [1, 1, 3] => Self::ThreeOfAKind,    
+            [1, 2, 2] => Self::TwoPair,         
+            [1, 1, 1, 2] => Self::OnePair,      
+            _ => Self::HighCard,                
+        };
+        for _ in 0..count_frequency(Card::Joker) {
+            hand_type = match hand_type {
+                Self::HighCard => Self::OnePair,
+                Self::OnePair => Self::ThreeOfAKind,
+                Self::TwoPair => Self::FullHouse,
+                Self::ThreeOfAKind => Self::FourOfAKind,
+                Self::FullHouse => Self::FourOfAKind,
+                _ => hand_type,
+            }
         }
+        hand_type
     }
 }
 
@@ -95,17 +107,15 @@ impl Hand {
     fn get_type(&self) -> Type {
         Type::determine_type(self.value)
     }
-}
-impl str::FromStr for Hand {
-    type Err = ParseInputError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn parse(s: &str, j_card: Card) -> Result<Self, ParseInputError> {
         let (hand, bid) = s.split_whitespace().collect_tuple::<(&str, &str)>().ok_or(ParseInputError {details: "Hand and bid are not delimited by ':'".to_string()})?;
-        let value: Cards = hand.chars().map(|c| Card::try_from(c)).collect::<Result<Vec<Card>, _>>()?.try_into().map_err(|_| ParseInputError{ details: "Hand does not consist of exactly 5 cards".to_string() })?;
+        let value: Cards = hand.chars().map(|c| Card::try_from(c, j_card)).collect::<Result<Vec<Card>, _>>()?.try_into().map_err(|_| ParseInputError{ details: "Hand does not consist of exactly 5 cards".to_string() })?;
         let bid = bid.parse::<u32>()?;
         Ok(Hand { value, bid })
     }
 }
+
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self.get_type()).cmp(&other.get_type()) {
@@ -132,7 +142,10 @@ fn winnings(hands: Vec<Hand>) -> u32{
 }
 
 pub fn solve(lines: Vec<String>) {
-    if let Ok(hands) = lines.into_iter().map(|line| line.parse::<Hand>()).collect::<Result<Vec<Hand>, _>>() {
+    if let Ok(hands) = lines.iter().map(|line| Hand::parse(&line, Card::Jack)).collect::<Result<Vec<Hand>, _>>() {
+        println!("Total Winnings: {}", winnings(hands));
+    }
+    if let Ok(hands) = lines.iter().map(|line| Hand::parse(&line, Card::Joker)).collect::<Result<Vec<Hand>, _>>() {
         println!("Total Winnings: {}", winnings(hands));
     }
 }
@@ -143,13 +156,13 @@ mod camel_cards {
 
     #[test]
     fn test_parsing_card() {
-        assert_eq!(Card::try_from('A'), Ok(Card::Ace));
-        assert_eq!(Card::try_from('2'), Ok(Card::Digit(2)));
+        assert_eq!(Card::try_from('A', Card::Joker), Ok(Card::Ace));
+        assert_eq!(Card::try_from('2', Card::Joker), Ok(Card::Digit(2)));
     }
 
     #[test]
     fn test_parsing_card_with_unmatched_char() {
-        assert!(Card::try_from('I').is_err());
+        assert!(Card::try_from('I', Card::Joker).is_err());
     }
 
     #[test]
@@ -158,6 +171,7 @@ mod camel_cards {
         assert!(Card::Ace > Card::King);
         assert!(Card::Jack < Card::Queen);
         assert!(Card::Digit(9) > Card::Digit(8));
+        assert!(Card::Digit(2) > Card::Joker);
     }
 
     #[test]
@@ -176,6 +190,18 @@ mod camel_cards {
         assert_eq!(Type::determine_type(cards), Type::OnePair);
         let cards: Cards = [Card::Jack, Card::Digit(4), Card::Digit(8), Card::Ace, Card::Digit(5)];
         assert_eq!(Type::determine_type(cards), Type::HighCard);
+    }
+
+    #[test]
+    fn test_determine_type_one_joker() {
+        let cards: Cards = [Card::Tens, Card::Digit(5), Card::Digit(5), Card::Joker, Card::Digit(5)];
+        assert_eq!(Type::determine_type(cards), Type::FourOfAKind);
+    }
+
+    #[test]
+    fn test_determine_type_two_joker() {
+        let cards: Cards = [Card::King, Card::Tens, Card::Joker, Card::Joker, Card::Tens];
+        assert_eq!(Type::determine_type(cards), Type::FourOfAKind);
     }
 
     #[test]
