@@ -1,4 +1,6 @@
-use std::collections;
+use std::{collections, iter};
+
+use crate::ParseInputError;
 
 #[derive(Debug, PartialEq, Eq)]
 enum Step {
@@ -23,15 +25,77 @@ mod instructions {
 }
 
 type Node = [char; 3];
-type map = collections::HashMap<Node, (Node, Node)>; 
+type Map = collections::HashMap<Node, (Node, Node)>; 
 
+mod map {
+    use std::collections;
+    use lazy_static::lazy_static;
+    use regex::Regex;
+
+    use crate::ParseInputError;
+    use super::{Node, Map, Step};
+
+    fn parse_node_and_edge(node_and_paths: String) -> Result<(Node, (Node, Node)), ParseInputError> {
+        lazy_static! {
+            static ref NODE_RE: Regex = Regex::new(r"(?<name>\w\w\w) = \((?<left>\w\w\w), (?<right>\w\w\w)\)").unwrap();
+        }
+        let caps: regex::Captures<'_> = NODE_RE.captures(&node_and_paths).ok_or(
+            ParseInputError { details: format!("{node_and_paths} does not conform to the expected pattern") }
+        )?;
+        match (caps.name("name"), caps.name("left"), caps.name("right")) {
+            (Some(name), Some(left), Some(right)) => { 
+                let name: [char; 3] = name.as_str().chars().collect::<Vec<char>>().try_into().unwrap();
+                let left: [char; 3] = left.as_str().chars().collect::<Vec<char>>().try_into().unwrap();
+                let right: [char; 3] = right.as_str().chars().collect::<Vec<char>>().try_into().unwrap();
+                Ok((name, (left, right)))
+            }
+            _ => Err (ParseInputError { details: "".to_string() }),
+        }
+    }
+
+    pub fn parse(nodes: Vec<String>) -> Result<Map, ParseInputError> {
+        match nodes.into_iter().map(parse_node_and_edge).collect::<Result<Vec<(Node, (Node, Node))>, ParseInputError>>() {
+            Ok(nodes_and_edges) => Ok(collections::HashMap::from_iter(nodes_and_edges)),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn execute(step: &Step, current_node: &Node, map: &Map) -> Node {
+        let (l_node, r_node) = map.get(current_node).unwrap();
+        match step {
+            Step::Left => *l_node, 
+            Step::Right => *r_node
+        }
+    }
+}
+
+fn parse_input(lines: Vec<String>) -> Result<(Vec<Step>, Map), ParseInputError> {
+    let (instructions, map) = lines.split_at(2);
+    let instructions= instructions::parse(instructions[0].to_string())?;
+    let map = map::parse(map.to_vec())?;
+    Ok((instructions, map))
+}
 
 pub fn solve(lines: Vec<String>) {
-    
+    if let Ok((instructions, map)) = parse_input(lines) {
+        // use a while
+        let mut current_node: Node = ['A', 'A', 'A'];
+        let step_count = iter::repeat(&instructions).flatten().take_while(|instruction: &&Step| {
+            println!("{:?}", current_node);
+            if current_node == ['Z', 'Z', 'Z'] {
+                return false;
+            } 
+            current_node = map::execute(instruction, &current_node, &map);
+            true
+        }).count();
+        println!("Numb: usizeer of steps taken to reach the end {step_count}");
+    }
 }
 
 #[cfg(test)]
 mod wasteland_tests {
+    use std::collections::HashMap;
+
     use super::*;
 
     #[test]
@@ -57,5 +121,39 @@ mod wasteland_tests {
     fn parse_instructions_with_invalid_character() {
         let instruction: String = "LRXR".to_string();
         assert!(instructions::parse(instruction).is_err());
+    }
+
+    #[test]
+    fn succesfully_parse_map() {
+        let map_lines = vec!["aaa = (bbb, ccc)".to_string(), "bbb = (ccc, zzz)".to_string()];
+        let maps: Map = HashMap::from_iter([
+            (['a', 'a', 'a'], (['b', 'b', 'b'], ['c', 'c', 'c'])), 
+            (['b', 'b', 'b'], (['c', 'c', 'c'], ['z', 'z', 'z']))
+        ]);
+        assert_eq!(map::parse(map_lines), Ok(maps));
+    }
+
+    #[test]
+    fn parse_map_with_one_path() {
+        let map_lines = vec!["aaa = (bbb, ccc)".to_string(), "bbb = (ccc)".to_string()];
+        assert!(map::parse(map_lines).is_err());
+        let map_lines = vec!["aaa = (bbb, ccc)".to_string(), "bbb=ccc,ddd".to_string()];
+        assert!(map::parse(map_lines).is_err());
+    }
+
+    #[test]
+    fn parse_map_with_less_than_three_char_nodes() {
+        let map_lines = vec!["aaa = (bbb, ccc)".to_string(), "b = (ccc, zzz)".to_string()];
+        assert!(map::parse(map_lines).is_err());
+    }
+
+    #[test]
+    fn parse_map_with_more_than_three_char_nodes() {
+        let map_lines = vec!["aaa = (bbb, ccc)".to_string(), "bbbbbb = (ccc, zzz)".to_string()];
+        let maps: Map = HashMap::from_iter([
+            (['a', 'a', 'a'], (['b', 'b', 'b'], ['c', 'c', 'c'])), 
+            (['b', 'b', 'b'], (['c', 'c', 'c'], ['z', 'z', 'z']))
+        ]);
+        assert_eq!(map::parse(map_lines), Ok(maps));
     }
 }
