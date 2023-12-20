@@ -1,5 +1,7 @@
 use crate::ParseInputError;
 
+type Position = (usize, usize);
+
 #[derive(Debug, PartialEq, Eq)]
 enum Pipe { Start, Vertical, Horizontal, NorthEast, NorthWest, SouthEast, SouthWest, Ground }
 impl TryFrom<char> for Pipe {
@@ -19,6 +21,21 @@ impl TryFrom<char> for Pipe {
         }
     }
 }
+impl Pipe {
+    pub fn connecting_positions(&self, grid_position: &Position) -> Option<(Position, Position)> {
+        match self {
+            Self::Vertical => Some(((grid_position.0 + 1, grid_position.1), (grid_position.0 - 1, grid_position.1))),
+            Self::Horizontal => Some(((grid_position.0, grid_position.1 + 1), (grid_position.0, grid_position.1 - 1))),
+            Self::NorthEast => Some(((grid_position.0 + 1, grid_position.1), (grid_position.0, grid_position.1 + 1))),
+            Self::NorthWest => Some(((grid_position.0 + 1, grid_position.1), (grid_position.0, grid_position.1 - 1))),
+            Self::SouthEast => Some(((grid_position.0 - 1, grid_position.1), (grid_position.0, grid_position.1 + 1))),
+            Self::SouthWest => Some(((grid_position.0 - 1, grid_position.1), (grid_position.0, grid_position.1 - 1))),
+            Self::Ground => Some((*grid_position, *grid_position)),
+            Self::Start => None,
+
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Grid(Vec<Vec<Pipe>>);
@@ -27,6 +44,18 @@ impl Grid {
         let parse_line = |line: String| -> Result<Vec<Pipe>, ParseInputError> { line.chars().map(|c| Pipe::try_from(c)).collect() };          
         let pipes: Vec<Vec<Pipe>> = lines.into_iter().map(parse_line).collect::<Result<Vec<Vec<Pipe>>, ParseInputError>>()?;
         Ok(Grid(pipes))
+    }
+
+    pub fn get_start_position(&self) -> Position {
+        let start_position_in_row = |row: &Vec<Pipe>| -> Option<usize> {
+            row.into_iter().position(|pipe| *pipe == Pipe::Start)
+        };
+        self.0.iter().enumerate().filter_map(|(i, row)| {
+            match start_position_in_row(row) {
+                Some(column_index) => Some((i, column_index)), 
+                None => None
+            }
+        }).nth(0).unwrap()
     }
 
     pub fn get_cycle_positions(&self) -> Vec<(usize, usize)> {
