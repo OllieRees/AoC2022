@@ -5,10 +5,6 @@ fn parse_history(line: String) -> Result<Vec<i32>, ParseInputError> {
 }
 
 fn predict_next_value(history: Vec<i32>) -> i32 {
-    // map |(a, b)| = a - b onto history.windows(2) 
-    // collect the result into a vector
-    // call predict_next_value with this vector
-    // add the function's value onto the last value in history
     if history.iter().all(|x| *x == 0) {
         0
     } else {
@@ -16,18 +12,26 @@ fn predict_next_value(history: Vec<i32>) -> i32 {
     }
 }
 
+fn predict_previous_value(history: Vec<i32>) -> i32 {
+    if history.iter().all(|x| *x == 0) {
+        0
+    } else {
+        history.first().unwrap_or(&0) - predict_previous_value(history.windows(2).map(|adjs| adjs[1] - adjs[0]).collect())
+    }
+}
+
 pub fn solve(lines: Vec<String>) {
     if let Ok(history) = lines.into_iter().map(parse_history).collect::<Result<Vec<Vec<i32>>, _>>() {
-        let next_value_sum: i32 = history.into_iter().map(|row| predict_next_value(row)).sum();
+        let next_value_sum: i32 = history.iter().map(|row| predict_next_value(row.clone())).sum();
         println!("Sum of Next Values {next_value_sum}");
+        let prev_value_sum: i32 = history.iter().map(|row| predict_previous_value(row.clone())).sum();
+        println!("Sum of Previous Values {prev_value_sum}");
     }
 }
 
 #[cfg(test)]
 mod mirage_maintenance {
-    use crate::year_2023::day_9::mirage_maintenance::predict_next_value;
-
-    use super::parse_history;
+    use super::*;
 
     #[test]
     fn parse_history_with_varying_spaces() {
@@ -61,5 +65,11 @@ mod mirage_maintenance {
         assert_eq!(predict_next_value(history), 28);
         let history: Vec<i32> = vec![10, 13, 16, 21, 30, 45];
         assert_eq!(predict_next_value(history), 68);
+    }
+
+    #[test]
+    fn test_predict_previous_value() {
+        let history: Vec<i32> = vec![10, 13, 16, 21, 30, 45];
+        assert_eq!(predict_previous_value(history), 5);
     }
 }
