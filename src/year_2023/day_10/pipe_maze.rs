@@ -1,3 +1,5 @@
+use std::collections;
+
 use crate::ParseInputError;
 
 type Position = (usize, usize);
@@ -22,7 +24,7 @@ impl TryFrom<char> for Pipe {
     }
 }
 impl Pipe {
-    pub fn connecting_positions(&self, grid_position: &Position) -> Option<(Position, Position)> {
+    pub fn connecting_positions(&self, grid_position: Position) -> Option<(Position, Position)> {
         match self {
             Self::Vertical => Some(((grid_position.0 + 1, grid_position.1), (grid_position.0 - 1, grid_position.1))),
             Self::Horizontal => Some(((grid_position.0, grid_position.1 + 1), (grid_position.0, grid_position.1 - 1))),
@@ -30,35 +32,41 @@ impl Pipe {
             Self::NorthWest => Some(((grid_position.0 + 1, grid_position.1), (grid_position.0, grid_position.1 - 1))),
             Self::SouthEast => Some(((grid_position.0 - 1, grid_position.1), (grid_position.0, grid_position.1 + 1))),
             Self::SouthWest => Some(((grid_position.0 - 1, grid_position.1), (grid_position.0, grid_position.1 - 1))),
-            Self::Ground => Some((*grid_position, *grid_position)),
+            Self::Ground => Some((grid_position, grid_position)),
             Self::Start => None,
 
+        }
+    }
+
+    pub fn next_position(&self, prior_position: Position, grid_position: Position) -> Option<Position> {
+        let connecting_positions = self.connecting_positions(grid_position);
+        match connecting_positions {
+            Some((position_1, position_2)) => if position_1 == prior_position {Some(position_2)} else {Some(position_1)},            
+            None => None,
         }
     }
 }
 
 #[derive(Debug)]
-struct Grid(Vec<Vec<Pipe>>);
+struct Grid(collections::HashMap<Position, Pipe>);
 impl Grid {
     pub fn new(lines: Vec<String>) -> Result<Self, ParseInputError> {       
-        let parse_line = |line: String| -> Result<Vec<Pipe>, ParseInputError> { line.chars().map(|c| Pipe::try_from(c)).collect() };          
-        let pipes: Vec<Vec<Pipe>> = lines.into_iter().map(parse_line).collect::<Result<Vec<Vec<Pipe>>, ParseInputError>>()?;
-        Ok(Grid(pipes))
+        let parse_line = |(row_index, line): (usize, String)| -> Result<Vec<(Position, Pipe)>, ParseInputError> { 
+            line.chars().enumerate().map(|(char_index, c)| {
+                match Pipe::try_from(c) {
+                    Ok(pipe) => Ok(((row_index, char_index), pipe)),
+                    Err(e) => Err(e),
+                }
+            }).collect() 
+        };          
+        Ok(Grid(lines.into_iter().enumerate().map(parse_line).flatten().flatten().collect()))
     }
 
     pub fn get_start_position(&self) -> Position {
-        let start_position_in_row = |row: &Vec<Pipe>| -> Option<usize> {
-            row.into_iter().position(|pipe| *pipe == Pipe::Start)
-        };
-        self.0.iter().enumerate().filter_map(|(i, row)| {
-            match start_position_in_row(row) {
-                Some(column_index) => Some((i, column_index)), 
-                None => None
-            }
-        }).nth(0).unwrap()
+        self.0.iter().find_map(|(pos, pipe)| if *pipe == Pipe::Start {Some(*pos)} else {None}).unwrap()
     }
 
-    pub fn get_cycle_positions(&self) -> Vec<(usize, usize)> {
+    pub fn get_cycle_positions(&self) -> Vec<Position> {
         // https://en.wikipedia.org/wiki/Cycle_detection#Algorithms
         Vec::new()
     }
