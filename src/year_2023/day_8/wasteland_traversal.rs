@@ -28,6 +28,7 @@ type Map = collections::HashMap<Node, (Node, Node)>;
 
 mod map {
     use std::{collections::{self, HashSet}, iter};
+    use itertools::{Itertools, FoldWhile};
     use lazy_static::lazy_static;
     use regex::Regex;
 
@@ -69,18 +70,18 @@ mod map {
 
     pub fn step_count(initial_node: Node, destinations: &collections::HashSet<Node>, instructions: &Vec<Step>, map: &Map) -> usize {
         let mut current_node: [char; 3] = initial_node;
-        iter::repeat(instructions).flatten().take_while(|instruction: &&Step| {
+        iter::repeat(instructions).flatten().fold_while(0, |acc: usize, instruction: &Step| {
             if destinations.contains(&current_node) {
-                return false;
-            } 
-            current_node = execute(instruction, &current_node, &map);
-            true
-        }).count()
+                FoldWhile::Done(acc)
+            } else {
+                current_node = execute(instruction, &current_node, &map);
+                FoldWhile::Continue(acc + 1)
+            }
+        }).into_inner()
     }
 
     pub fn step_count_multiple_starts(start_nodes: HashSet<Node>, destinations: HashSet<Node>, instructions: &Vec<Step>, map: &Map) -> usize {
-        let step_counts: Vec<usize> = start_nodes.into_iter().map(|start| step_count(start, &destinations, &instructions, &map)).collect();
-        step_counts.into_iter().fold(1, |acc, x| num::integer::lcm(acc, x))
+        start_nodes.into_iter().map(|start| step_count(start, &destinations, &instructions, &map)).fold(1, |acc, x| num::integer::lcm(acc, x))
     }
 }
 
