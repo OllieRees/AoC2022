@@ -74,6 +74,7 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
                 5 => Some(day_5::planting_seeds::solve),
                 6 => Some(day_6::boat_race::solve),
                 7 => Some(day_7::camel_cards::solve),
+                8 => Some(day_8::wasteland_traversal::solve),
                 _ => None,
             }
         }
