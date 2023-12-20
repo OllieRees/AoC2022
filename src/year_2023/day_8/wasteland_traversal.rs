@@ -54,10 +54,8 @@ mod map {
     }
 
     pub fn parse(nodes: Vec<String>) -> Result<Map, ParseInputError> {
-        match nodes.into_iter().map(parse_node_and_edge).collect::<Result<Vec<(Node, (Node, Node))>, ParseInputError>>() {
-            Ok(nodes_and_edges) => Ok(collections::HashMap::from_iter(nodes_and_edges)),
-            Err(e) => Err(e)
-        }
+        type NodeMap = Vec<(Node, (Node, Node))>;
+        nodes.into_iter().map(parse_node_and_edge).collect::<Result<NodeMap, ParseInputError>>().map(|x: NodeMap| collections::HashMap::from_iter(x))
     }
 
     pub fn execute(step: &Step, current_node: &Node, map: &Map) -> Node {
