@@ -1,4 +1,4 @@
-use std::{collections, iter};
+use std::collections;
 
 use crate::ParseInputError;
 
@@ -7,7 +7,6 @@ enum Step {
     Left,
     Right,
 }
-
 mod instructions {
     use crate::ParseInputError;
 
@@ -28,7 +27,7 @@ type Node = [char; 3];
 type Map = collections::HashMap<Node, (Node, Node)>; 
 
 mod map {
-    use std::collections;
+    use std::{collections::{self, HashSet}, iter};
     use lazy_static::lazy_static;
     use regex::Regex;
 
@@ -67,28 +66,42 @@ mod map {
             Step::Right => *r_node
         }
     }
+
+    pub fn step_count(initial_node: Node, destinations: &collections::HashSet<Node>, instructions: &Vec<Step>, map: &Map) -> usize {
+        let mut current_node: [char; 3] = initial_node;
+        iter::repeat(instructions).flatten().take_while(|instruction: &&Step| {
+            if destinations.contains(&current_node) {
+                return false;
+            } 
+            current_node = execute(instruction, &current_node, &map);
+            true
+        }).count()
+    }
+
+    pub fn step_count_multiple_starts(start_nodes: HashSet<Node>, destinations: HashSet<Node>, instructions: &Vec<Step>, map: &Map) -> usize {
+        let step_counts: Vec<usize> = start_nodes.into_iter().map(|start| step_count(start, &destinations, &instructions, &map)).collect();
+        step_counts.into_iter().fold(1, |acc, x| num::integer::lcm(acc, x))
+    }
 }
 
 fn parse_input(lines: Vec<String>) -> Result<(Vec<Step>, Map), ParseInputError> {
     let (instructions, map) = lines.split_at(2);
-    let instructions= instructions::parse(instructions[0].to_string())?;
-    let map = map::parse(map.to_vec())?;
+    let instructions: Vec<Step>= instructions::parse(instructions[0].to_string())?;
+    let map: collections::HashMap<Node, (Node, Node)> = map::parse(map.to_vec())?;
     Ok((instructions, map))
 }
 
 pub fn solve(lines: Vec<String>) {
     if let Ok((instructions, map)) = parse_input(lines) {
-        // use a while
-        let mut current_node: Node = ['A', 'A', 'A'];
-        let step_count = iter::repeat(&instructions).flatten().take_while(|instruction: &&Step| {
-            println!("{:?}", current_node);
-            if current_node == ['Z', 'Z', 'Z'] {
-                return false;
-            } 
-            current_node = map::execute(instruction, &current_node, &map);
-            true
-        }).count();
-        println!("Numb: usizeer of steps taken to reach the end {step_count}");
+        let step_count: usize = map::step_count(['A', 'A', 'A'], &collections::HashSet::from_iter(vec![['Z', 'Z', 'Z']]), &instructions, &map);
+        println!("Number of steps taken to reach the end {step_count}");
+        
+        // part 2
+        let start_nodes: collections::HashSet<Node> = map.keys().filter_map(|key| if *key.last().unwrap() == 'A' {Some(*key)} else {None}).collect();
+        let destinations: collections::HashSet<Node> = map.keys().filter_map(|key| if *key.last().unwrap() == 'Z' {Some(*key)} else {None}).collect();
+        let step_count: usize = map::step_count_multiple_starts(start_nodes, destinations, &instructions, &map);
+        println!("Step Counts: {:?}", step_count);
+
     }
 }
 
