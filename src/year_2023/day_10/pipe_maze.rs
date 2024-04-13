@@ -1,5 +1,7 @@
 use std::{collections};
 
+use itertools::Itertools;
+
 use crate::ParseInputError;
 
 type Position = (usize, usize);
@@ -32,16 +34,16 @@ impl Grid {
         Err(ParseInputError{details: "".to_string()})
     }
     
-    pub fn get_cycle_from_start() -> Vec<Position> {
+    pub fn get_cycle_from_start(&self) -> Vec<Position> {
         Vec::new()
     }
 
-    pub fn get_adjancet_pipes_from_position(pos: &Position) -> Vec<Position> {
+    pub fn get_adjancet_pipes_from_position(&self, pos: &Position) -> Vec<Position> {
         Vec::new()
     }
 
-    fn get_position_from_start() -> Position {
-        (0, 0)
+    fn get_position_from_start(&self) -> Position {
+        *self.0.iter().find_or_first(|(_, pipe)| **pipe==Pipe::Start).unwrap().0
     }
 }
 
