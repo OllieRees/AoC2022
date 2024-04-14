@@ -70,10 +70,6 @@ impl Grid {
     fn get_position_from_start(&self) -> Position {
         *self.0.iter().find_or_first(|(_, pipe)| **pipe==Pipe::Start).unwrap().0
     }
-
-    fn size(&self) -> (usize, usize) {
-        (0, 0)
-    }
 }
 
 pub fn solve(lines: Vec<String>) {
