@@ -23,6 +23,30 @@ impl TryFrom<char> for Pipe {
         }
     }
 }
+impl Pipe {
+    pub fn get_connected_positions_from_position(&self, pos: Position) -> Vec<Position> {
+        match self {
+            Self::Start if pos.0 == 0 && pos.1 == 0 => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 + 1)],
+            Self::Start if pos.0 == 0 => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
+            Self::Start if pos.1 == 0 => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 + 1)],
+            Self::Start => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
+            Self::Vertical if pos.1 == 0 => vec![(pos.0, pos.1 + 1)],
+            Self::Vertical => vec![(pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
+            Self::Horizontal if pos.0 == 0 => vec![(pos.0 + 1, pos.1)],
+            Self::Horizontal => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1)],
+            Self::NorthEast if pos.1 == 0 => vec![(pos.0 + 1, pos.1)],
+            Self::NorthEast => vec![(pos.0, pos.1 - 1), (pos.0 + 1, pos.1)],
+            Self::NorthWest if pos.0 == 0 && pos.1 == 0 => vec![],
+            Self::NorthWest if pos.0 == 0 => vec![(pos.0, pos.1 - 1)],
+            Self::NorthWest if pos.1 == 0 => vec![(pos.0 - 1, pos.1)],
+            Self::NorthWest => vec![(pos.0, pos.1 - 1), (pos.0 - 1, pos.1)],
+            Self::SouthEast => vec![(pos.0, pos.1 + 1), (pos.0 + 1, pos.1)],
+            Self::SouthWest if pos.0 == 0 => vec![(pos.0, pos.1 + 1)],
+            Self::SouthWest => vec![(pos.0, pos.1 + 1), (pos.0 - 1, pos.1)],
+            Self::Ground =>vec![],
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Grid(HashMap<Position, Pipe>);
@@ -39,12 +63,16 @@ impl Grid {
         Vec::new()
     }
 
-    pub fn get_adjancet_pipes_from_position(&self, pos: &Position) -> Vec<Position> {
+    pub fn get_connected_positions_from_position(&self, pos: &Position) -> Vec<Position> {
         Vec::new()
     }
 
     fn get_position_from_start(&self) -> Position {
         *self.0.iter().find_or_first(|(_, pipe)| **pipe==Pipe::Start).unwrap().0
+    }
+
+    fn size(&self) -> (usize, usize) {
+        (0, 0)
     }
 }
 
@@ -92,5 +120,35 @@ mod pipe_maze {
     #[test]
     fn parse_grid_with_one_bad_row() {
         assert!(Grid::new(vec!["..F7.".to_string(), ".FX|.".to_string(), "SJ.L7".to_string()]).is_err());
+    }
+
+    #[test]
+    fn get_position_of_start() {
+        let grid: Grid = Grid::new(grid()).unwrap();
+        assert_eq!(grid.get_position_from_start(), (2, 0));
+    }
+
+    #[test]
+    fn get_all_pipe_connected_positions_successfully() {
+        assert_eq!(Pipe::Start.get_connected_positions_from_position((0, 0)), vec![(1, 0), (0, 1)]);
+        assert_eq!(Pipe::Vertical.get_connected_positions_from_position((1, 1)), vec![(1, 0), (1, 2)]);
+        assert_eq!(Pipe::Horizontal.get_connected_positions_from_position((1, 1)), vec![(0, 1), (2, 1)]);
+        assert_eq!(Pipe::NorthEast.get_connected_positions_from_position((1, 1)), vec![(1, 0), (2, 1)]);
+        assert_eq!(Pipe::NorthWest.get_connected_positions_from_position((1, 1)), vec![(1, 0), (0, 1)]);
+        assert_eq!(Pipe::SouthEast.get_connected_positions_from_position((1, 1)), vec![(1, 2), (2, 1)]);
+        assert_eq!(Pipe::SouthWest.get_connected_positions_from_position((1, 1)), vec![(1, 2), (0, 1)]);
+        assert_eq!(Pipe::Ground.get_connected_positions_from_position((1, 1)), vec![]);
+    }
+
+    #[test]
+    fn get_all_pipe_connected_positions_from_origin() {
+        assert_eq!(Pipe::Start.get_connected_positions_from_position((0, 0)), vec![(1, 0), (0, 1)]);
+        assert_eq!(Pipe::Vertical.get_connected_positions_from_position((0, 0)), vec![(0, 1)]);
+        assert_eq!(Pipe::Horizontal.get_connected_positions_from_position((0, 0)), vec![(1, 0)]);
+        assert_eq!(Pipe::NorthEast.get_connected_positions_from_position((0, 0)), vec![(1, 0)]);
+        assert_eq!(Pipe::NorthWest.get_connected_positions_from_position((0, 0)), vec![]);
+        assert_eq!(Pipe::SouthEast.get_connected_positions_from_position((0, 0)), vec![(0, 1), (1, 0)]);
+        assert_eq!(Pipe::SouthWest.get_connected_positions_from_position((0, 0)), vec![(0, 1)]);
+        assert_eq!(Pipe::Ground.get_connected_positions_from_position((0, 0)), vec![]);
     }
  }
