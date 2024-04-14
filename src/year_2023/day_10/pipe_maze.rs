@@ -53,10 +53,10 @@ struct Grid(HashMap<Position, Pipe>);
 
 impl Grid {
     pub fn new(lines: Vec<String>) -> Result<Self, ParseInputError> {       
-        let parse_line = |(row_index, line): (usize, String)| -> Result<Vec<(Position, Pipe)>, ParseInputError> { 
+        let parse_row = |(row_index, line): (usize, String)| -> Result<Vec<(Position, Pipe)>, ParseInputError> { 
             line.chars().enumerate().map(|(char_index, c)| Ok(((row_index, char_index), Pipe::try_from(c)?))).collect() 
         };
-        Ok(Grid(lines.into_iter().enumerate().map(parse_line).collect::<Result<Vec<Vec<(Position, Pipe)>>, _>>()?.into_iter().flatten().collect()))
+        Ok(Grid(lines.into_iter().enumerate().map(parse_row).collect::<Result<Vec<Vec<(Position, Pipe)>>, _>>()?.into_iter().flatten().collect()))
     }
     
     pub fn get_cycle_from_start(&self) -> Vec<Position> {
@@ -77,7 +77,16 @@ impl Grid {
 }
 
 pub fn solve(lines: Vec<String>) {
+    if let Ok(grid) = Grid::new(lines) {
+        println!("{}", grid.get_cycle_from_start().len() / 2 as usize);
+    }
+}
 
+type DirectedGraph = HashMap<Position, Vec<Position>>;
+impl Into<DirectedGraph> for Grid { 
+    fn into(self) -> DirectedGraph {
+        self.0.iter().map(|(pos, _)| (*pos, self.get_connected_positions(&pos))).collect()
+    }
 }
 
 #[cfg(test)]
@@ -120,6 +129,13 @@ mod pipe_maze {
     #[test]
     fn parse_grid_with_one_bad_row() {
         assert!(Grid::new(vec!["..F7.".to_string(), ".FX|.".to_string(), "SJ.L7".to_string()]).is_err());
+    }
+
+    #[test]
+    fn parse_grid_into_directed_graph() {
+        let grid: Grid = Grid::new(grid()).unwrap();
+        let directed_graph_grid: DirectedGraph = grid.into();
+        assert_eq!(directed_graph_grid.get(&(0, 2)).unwrap(), &vec![(0, 3), (1, 2)]);
     }
 
     #[test]
