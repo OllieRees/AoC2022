@@ -1,7 +1,5 @@
-use std::{collections};
-
+use std::collections::HashMap;
 use itertools::Itertools;
-
 use crate::ParseInputError;
 
 type Position = (usize, usize);
@@ -27,11 +25,14 @@ impl TryFrom<char> for Pipe {
 }
 
 #[derive(Debug)]
-struct Grid(collections::HashMap<Position, Pipe>);
+struct Grid(HashMap<Position, Pipe>);
 
 impl Grid {
     pub fn new(lines: Vec<String>) -> Result<Self, ParseInputError> {       
-        Err(ParseInputError{details: "".to_string()})
+        let parse_line = |(row_index, line): (usize, String)| -> Result<Vec<(Position, Pipe)>, ParseInputError> { 
+            line.chars().enumerate().map(|(char_index, c)| Ok(((row_index, char_index), Pipe::try_from(c)?))).collect() 
+        };
+        Ok(Grid(lines.into_iter().enumerate().map(parse_line).collect::<Result<Vec<Vec<(Position, Pipe)>>, _>>()?.into_iter().flatten().collect()))
     }
     
     pub fn get_cycle_from_start(&self) -> Vec<Position> {
@@ -55,10 +56,10 @@ pub fn solve(lines: Vec<String>) {
 mod pipe_maze {
     use crate::year_2023::day_10::pipe_maze::*;
 
-    const GRID: [&str; 5] = ["..F7.", ".FJ|.", "SJ. L7", "|F--J", "LJ..."];
+    const GRID: [&str; 5] = ["..F7.", ".FJ|.", "SJ.L7", "|F--J", "LJ..."];
 
-    fn parse_grid() -> Grid {
-        Grid::new(GRID.into_iter().map(|s: &str| s.to_string()).collect::<Vec<String>>()).unwrap()
+    fn grid() -> Vec<String> {
+        GRID.into_iter().map(|s: &str| s.to_string()).collect()
     }
 
     #[test]
@@ -77,4 +78,19 @@ mod pipe_maze {
     fn parse_pipe_types_with_invalid_char() {
         assert_eq!(Pipe::try_from('X'), Err(ParseInputError {details: "Could not parse X to a pipe type".to_string()}));
     }
-}
+
+    #[test]
+    fn parse_grid_successfully() {
+        let grid: Grid = Grid::new(grid()).unwrap();
+        assert_eq!(grid.0.get(&(0, 0)), Some(&Pipe::Ground));
+        assert_eq!(grid.0.get(&(0, 2)), Some(&Pipe::SouthEast));
+        assert_eq!(grid.0.get(&(2, 0)), Some(&Pipe::Start));
+        assert_eq!(grid.0.get(&(1, 3)), Some(&Pipe::Vertical));
+        assert_eq!(grid.0.get(&(3, 2)), Some(&Pipe::Horizontal));
+    }
+
+    #[test]
+    fn parse_grid_with_one_bad_row() {
+        assert!(Grid::new(vec!["..F7.".to_string(), ".FX|.".to_string(), "SJ.L7".to_string()]).is_err());
+    }
+ }
