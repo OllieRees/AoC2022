@@ -60,6 +60,8 @@ impl Grid {
     }
     
     pub fn get_cycle_from_start(&self) -> Vec<Position> {
+        // Since this grid is transformable to a directed graph we can use Tarjan's SCC Algorithm
+        // See https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
         Vec::new()
     }
 
