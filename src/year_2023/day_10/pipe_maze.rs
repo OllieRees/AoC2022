@@ -25,26 +25,25 @@ impl TryFrom<char> for Pipe {
 }
 impl Pipe {
     pub fn get_connected_positions(&self, pos: Position) -> Vec<Position> {
-        match self {
-            Self::Start if pos.0 == 0 && pos.1 == 0 => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 + 1)],
-            Self::Start if pos.0 == 0 => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
-            Self::Start if pos.1 == 0 => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 + 1)],
-            Self::Start => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
-            Self::Vertical if pos.1 == 0 => vec![(pos.0, pos.1 + 1)],
-            Self::Vertical => vec![(pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
-            Self::Horizontal if pos.0 == 0 => vec![(pos.0 + 1, pos.1)],
-            Self::Horizontal => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1)],
-            Self::NorthEast if pos.1 == 0 => vec![(pos.0 + 1, pos.1)],
-            Self::NorthEast => vec![(pos.0, pos.1 - 1), (pos.0 + 1, pos.1)],
-            Self::NorthWest if pos.0 == 0 && pos.1 == 0 => vec![],
-            Self::NorthWest if pos.0 == 0 => vec![(pos.0, pos.1 - 1)],
-            Self::NorthWest if pos.1 == 0 => vec![(pos.0 - 1, pos.1)],
-            Self::NorthWest => vec![(pos.0, pos.1 - 1), (pos.0 - 1, pos.1)],
-            Self::SouthEast => vec![(pos.0, pos.1 + 1), (pos.0 + 1, pos.1)],
-            Self::SouthWest if pos.0 == 0 => vec![(pos.0, pos.1 + 1)],
-            Self::SouthWest => vec![(pos.0, pos.1 + 1), (pos.0 - 1, pos.1)],
-            Self::Ground =>vec![],
-        }
+        let positions = || -> Vec<(i32, i32)> {
+            let pos = (pos.0 as i32, pos.1 as i32);
+            match self {
+                Self::Start => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
+                Self::Vertical => vec![(pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
+                Self::Horizontal => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1)],
+                Self::NorthEast => vec![(pos.0, pos.1 - 1), (pos.0 + 1, pos.1)],
+                Self::NorthWest => vec![(pos.0, pos.1 - 1), (pos.0 - 1, pos.1)],
+                Self::SouthEast => vec![(pos.0, pos.1 + 1), (pos.0 + 1, pos.1)],
+                Self::SouthWest => vec![(pos.0, pos.1 + 1), (pos.0 - 1, pos.1)],
+                Self::Ground =>vec![],
+            }
+        };
+        positions().into_iter().filter_map(|signed_pos: (i32, i32)| {
+            match (usize::try_from(signed_pos.0), usize::try_from(signed_pos.1)) {
+                (Ok(x), Ok(y)) => Some((x, y)),
+                _ => None 
+            }
+        }).collect()
     }
 }
 
