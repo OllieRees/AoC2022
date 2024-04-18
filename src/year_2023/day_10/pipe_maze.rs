@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use itertools::Itertools;
 use crate::ParseInputError;
 
 type Position = (usize, usize);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Pipe { Start, Vertical, Horizontal, NorthEast, NorthWest, SouthEast, SouthWest, Ground }
 impl TryFrom<char> for Pipe {
     type Error = ParseInputError;
@@ -47,7 +47,7 @@ impl Pipe {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Grid(HashMap<Position, Pipe>);
 
 impl Grid {
@@ -59,8 +59,16 @@ impl Grid {
     }
     
     pub fn get_cycle_from_start(&self) -> Vec<Position> {
-        // Since this grid is transformable to a directed graph we can use a variation of Tarjan's SCC Algorithm starting with the start node
-        // See https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+        // https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm#Stack_invariant
+        // Use a stack to find the cycle
+        let start_pos = self.get_position_from_start();
+        let mut dfs_stack: Vec<Position> = vec![start_pos];
+        while let Some(node) = dfs_stack.pop() {
+            if node == start_pos {
+                return dfs_stack
+            }
+            self.get_connected_positions(&node).into_iter().for_each(|node: (usize, usize)| dfs_stack.push(node));
+        }
         Vec::new()
     }
 
@@ -73,11 +81,6 @@ impl Grid {
     }
 }
 
-pub fn solve(lines: Vec<String>) {
-    if let Ok(grid) = Grid::new(lines) {
-        println!("{}", grid.get_cycle_from_start().len() / 2 as usize);
-    }
-}
 
 type DirectedGraph = HashMap<Position, Vec<Position>>;
 impl Into<DirectedGraph> for Grid { 
@@ -85,6 +88,14 @@ impl Into<DirectedGraph> for Grid {
         self.0.iter().map(|(pos, _)| (*pos, self.get_connected_positions(&pos))).collect()
     }
 }
+
+
+pub fn solve(lines: Vec<String>) {
+    if let Ok(grid) = Grid::new(lines) {
+        println!("{}", grid.get_cycle_from_start().len() / 2 as usize);
+    }
+}
+
 
 #[cfg(test)]
 mod pipe_maze {
@@ -172,5 +183,18 @@ mod pipe_maze {
         assert_eq!(grid.get_connected_positions(&(2, 0)), vec![(1, 0), (3, 0), (2, 1)]);
         assert_eq!(grid.get_connected_positions(&(4, 4)), vec![]);
         assert_eq!(grid.get_connected_positions(&(5, 5)), vec![]);
+    }
+
+    #[test]
+    fn get_cycle_from_start_practice_grid() {
+        let grid: Grid = Grid::new(grid()).unwrap();
+        assert_eq!(
+            grid.get_cycle_from_start(), 
+            vec![
+                (2, 0), (2, 1), (1, 1), (1, 2), (0, 2), (0, 3), (1, 3), (2, 3), 
+                (2, 4), 
+                (3, 4), (3, 3), (3, 2), (3, 1) , (4, 1), (4, 0), (3, 0), (2, 0)
+            ]
+        );
     }
  }
