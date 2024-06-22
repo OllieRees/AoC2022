@@ -26,40 +26,16 @@ impl TryFrom<char> for Pipe {
         }
     }
 }
-impl Pipe {
-    pub fn get_connected_positions(&self, pos: Position) -> Vec<Position> {
-        let positions = || -> Vec<(i32, i32)> {
-            let pos = (pos.0 as i32, pos.1 as i32);
-            match self {
-                Self::Start => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1), (pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
-                Self::Vertical => vec![(pos.0 - 1, pos.1), (pos.0 + 1, pos.1)],
-                Self::Horizontal => vec![(pos.0, pos.1 - 1), (pos.0, pos.1 + 1)],
-                Self::NorthEast => vec![(pos.0 - 1, pos.1), (pos.0, pos.1 + 1)],
-                Self::NorthWest => vec![(pos.0 - 1, pos.1), (pos.0, pos.1 - 1)],
-                Self::SouthEast => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 + 1)],
-                Self::SouthWest => vec![(pos.0 + 1, pos.1), (pos.0, pos.1 - 1)],
-                Self::Ground =>vec![],
-            }
-        };
-        positions().into_iter().filter_map(|signed_pos: (i32, i32)| {
-            match (usize::try_from(signed_pos.0), usize::try_from(signed_pos.1)) {
-                (Ok(x), Ok(y)) => Some((x, y)),
-                _ => None 
-            }
-        }).collect()
-    }
-}
-
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-struct Node {
+struct Tile {
     pos: Position,
     pipe: Pipe
 }
 
-impl Node {
+impl Tile {
     fn new(pos: Position, pipe_letter: char) -> Result<Self, ParseInputError> {
-        Ok(Node {pos, pipe: Pipe::try_from(pipe_letter)?})
+        Ok(Tile {pos, pipe: Pipe::try_from(pipe_letter)?})
     }
 
     fn get_connected_positions(&self) -> Vec<Position> {
@@ -87,29 +63,29 @@ impl Node {
 
 
 #[derive(Debug, Clone)]
-struct PipeMaze(DiGraphMap<Node, ()>);
+struct PipeMaze(DiGraphMap<Tile, ()>);
 
 impl TryFrom<Vec<String>> for PipeMaze {
     type Error = ParseInputError;
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-        let mut grid: DiGraphMap<Node, ()> = DiGraphMap::new();
+        let mut grid: DiGraphMap<Tile, ()> = DiGraphMap::new();
 
-        let nodes: Vec<Node> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)| 
+        let nodes: Vec<Tile> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)| 
             row.chars().enumerate().map(|(column_n, pipe_letter): (usize, char)| 
-                Node::new((row_n, column_n), pipe_letter)
+                Tile::new((row_n, column_n), pipe_letter)
             ).collect()
-        ).collect::<Result<Vec<Vec<Node>>, ParseInputError>>()?.into_iter().flatten().collect();
+        ).collect::<Result<Vec<Vec<Tile>>, ParseInputError>>()?.into_iter().flatten().collect();
 
-        let position_map: HashMap<Position, Node> = nodes.iter().map(|node: &Node| (node.pos, *node)).collect();
+        let position_map: HashMap<Position, Tile> = nodes.iter().map(|node: &Tile| (node.pos, *node)).collect();
     
-        let get_neighbours = |node: &Node| -> Vec<&Node> {
+        let get_neighbours_for_node = |node: &Tile| -> Vec<&Tile> {
             node.get_connected_positions().iter().filter_map(|pos: &(usize, usize)| position_map.get(pos)).collect()
         };
 
         for node in nodes.iter() {
             grid.add_node(*node);
-            for neighbour in get_neighbours(node) {
+            for neighbour in get_neighbours_for_node(node) {
                 grid.add_edge(*node, *neighbour, ());
             }
         }
@@ -118,7 +94,7 @@ impl TryFrom<Vec<String>> for PipeMaze {
 }
 
 impl PipeMaze {
-    pub fn get_cycle_from_start(&self) -> Vec<Node> {
+    pub fn get_cycle_from_start(&self) -> Vec<Tile> {
         // https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm#Stack_invariant
         // Use a stack to find the cycle
         Vec::new()
@@ -167,52 +143,28 @@ mod pipe_maze {
     }
 
     #[test]
-    fn get_all_pipe_connected_positions_successfully() {
-        assert_eq!(Pipe::Start.get_connected_positions((1, 1)), vec![(0, 1), (2, 1), (1, 0), (1, 2)]);
-        assert_eq!(Pipe::Vertical.get_connected_positions((1, 1)), vec![(0, 1), (2, 1)]);
-        assert_eq!(Pipe::Horizontal.get_connected_positions((1, 1)), vec![(1, 0), (1, 2)]);
-        assert_eq!(Pipe::NorthEast.get_connected_positions((1, 1)), vec![(0, 1), (1, 2)]);
-        assert_eq!(Pipe::NorthWest.get_connected_positions((1, 1)), vec![(0, 1), (1, 0)]);
-        assert_eq!(Pipe::SouthEast.get_connected_positions((1, 1)), vec![(2, 1), (1, 2)]);
-        assert_eq!(Pipe::SouthWest.get_connected_positions((1, 1)), vec![(2, 1), (1, 0)]);
-        assert_eq!(Pipe::Ground.get_connected_positions((1, 1)), vec![]);
-    }
-
-    #[test]
-    fn get_all_pipe_connected_positions_from_corner() {
-        assert_eq!(Pipe::Start.get_connected_positions((0, 0)), vec![(1, 0), (0, 1)]);
-        assert_eq!(Pipe::Vertical.get_connected_positions((0, 0)), vec![(1, 0)]);
-        assert_eq!(Pipe::Horizontal.get_connected_positions((0, 0)), vec![(0, 1)]);
-        assert_eq!(Pipe::NorthEast.get_connected_positions((0, 0)), vec![(0, 1)]);
-        assert_eq!(Pipe::NorthWest.get_connected_positions((0, 0)), vec![]);
-        assert_eq!(Pipe::SouthEast.get_connected_positions((0, 0)), vec![(1, 0), (0, 1)]);
-        assert_eq!(Pipe::SouthWest.get_connected_positions((0, 0)), vec![(1, 0)]);
-        assert_eq!(Pipe::Ground.get_connected_positions((0, 0)), vec![]);
-    }
-
-    #[test]
     fn new_node() {
-        assert_eq!(Node::new((0, 0), 'S').unwrap(), Node {pos: (0, 0), pipe: Pipe::Start});
+        assert_eq!(Tile::new((0, 0), 'S').unwrap(), Tile {pos: (0, 0), pipe: Pipe::Start});
     }
 
     #[test]
     fn new_node_err() {
-        assert!(Node::new((0, 0), 'X').is_err());
+        assert!(Tile::new((0, 0), 'X').is_err());
     }
 
 
     #[test]
     fn parse_grid_nodes_successfully() {
         let grid_3x3: PipeMaze = PipeMaze::try_from(vec![String::from("S-7"), String::from("|.|"), String::from("L-J")]).unwrap();
-        assert!(grid_3x3.0.contains_node(Node {pos: (0, 0), pipe: Pipe::Start}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (0, 1), pipe: Pipe::Horizontal}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (0, 2), pipe: Pipe::SouthWest}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (1, 0), pipe: Pipe::Vertical}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (1, 1), pipe: Pipe::Ground}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (1, 2), pipe: Pipe::Vertical}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (2, 0), pipe: Pipe::NorthEast}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (2, 1), pipe: Pipe::Horizontal}));
-        assert!(grid_3x3.0.contains_node(Node {pos: (2, 2), pipe: Pipe::NorthWest}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (0, 0), pipe: Pipe::Start}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (0, 1), pipe: Pipe::Horizontal}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (0, 2), pipe: Pipe::SouthWest}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (1, 0), pipe: Pipe::Vertical}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (1, 1), pipe: Pipe::Ground}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (1, 2), pipe: Pipe::Vertical}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (2, 0), pipe: Pipe::NorthEast}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (2, 1), pipe: Pipe::Horizontal}));
+        assert!(grid_3x3.0.contains_node(Tile {pos: (2, 2), pipe: Pipe::NorthWest}));
         println!("{:?}", Dot::new(&grid_3x3.0));
     }
 
