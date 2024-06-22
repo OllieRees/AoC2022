@@ -61,12 +61,6 @@ impl Tile {
     }
 }
 
-impl std::fmt::Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, ".")
-    }
-}
-
 
 #[derive(Debug, Clone)]
 struct PipeMaze(DiGraphMap<Tile, ()>);
@@ -179,7 +173,6 @@ mod pipe_maze {
         assert!(grid_3x3.0.contains_node(Tile {pos: (2, 0), pipe: Pipe::NorthEast}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (2, 1), pipe: Pipe::Horizontal}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (2, 2), pipe: Pipe::NorthWest}));
-        println!("{:?}", Dot::new(&grid_3x3.0));
     }
 
     #[test]
