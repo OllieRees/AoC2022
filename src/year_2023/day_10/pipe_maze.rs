@@ -61,6 +61,12 @@ impl Tile {
     }
 }
 
+impl std::fmt::Display for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, ".")
+    }
+}
+
 
 #[derive(Debug, Clone)]
 struct PipeMaze(DiGraphMap<Tile, ()>);
@@ -94,6 +100,14 @@ impl TryFrom<Vec<String>> for PipeMaze {
 }
 
 impl PipeMaze {
+    pub fn get_tile(&self, position: Position) -> Option<Tile> {
+        self.0.nodes().find_or_first(|tile| tile.pos == position)
+    }
+
+    pub fn get_neighbours(&self, tile: &Tile) -> Vec<Tile> {
+        self.0.neighbors(self.0.node_references().find_or_first(|(node, _)| node == tile).unwrap().0).collect()
+    }
+
     pub fn get_cycle_from_start(&self) -> Vec<Tile> {
         // https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm#Stack_invariant
         // Use a stack to find the cycle
@@ -101,7 +115,7 @@ impl PipeMaze {
     }
 
     fn get_position_from_start(&self) -> Position {
-        self.0.node_references().into_iter().find_or_first(|(node, _)| node.pipe == Pipe::Start ).unwrap().0.pos
+        self.0.nodes().find_or_first(|tile| tile.pipe ==  Pipe::Start).unwrap().pos
     }
 }
 
@@ -115,7 +129,7 @@ pub fn solve(lines: Vec<String>) {
 
 #[cfg(test)]
 mod pipe_maze {
-    use petgraph::dot::Dot;
+    use petgraph::{dot::Dot, visit::IntoNeighbors};
 
     use crate::year_2023::day_10::pipe_maze::*;
 
@@ -169,13 +183,39 @@ mod pipe_maze {
     }
 
     #[test]
-    fn parse_grid_edges_successfully() {
+    fn parse_grid_neighbours_successfully() {
         let grid: PipeMaze = PipeMaze::try_from(vec![String::from("S-7"), String::from("|.|"), String::from("L-J")]).unwrap();
-        assert!(grid.0.edge_count() == 16);  
+        assert_eq!(
+            grid.get_neighbours(&Tile { pos: (0, 0), pipe: Pipe::Start }), 
+            vec![Tile {pos: (1, 0), pipe: Pipe::Vertical}, Tile {pos: (0, 1), pipe: Pipe::Horizontal}]
+        );
+
         let grid: PipeMaze = PipeMaze::try_from(vec![String::from("..."), String::from(".S."), String::from("...")]).unwrap();
-        assert!(grid.0.edge_count() == 4);  
+        assert_eq!(
+            grid.get_neighbours(&Tile { pos: (1, 1), pipe: Pipe::Start }), 
+            vec![
+                Tile { pos: (0, 1), pipe: Pipe::Ground }, 
+                Tile { pos: (2, 1), pipe: Pipe::Ground }, 
+                Tile { pos: (1, 0), pipe: Pipe::Ground }, 
+                Tile { pos: (1, 2), pipe: Pipe::Ground }
+            ]
+        );
         let grid: PipeMaze = PipeMaze::try_from(vec![String::from("LL."), String::from("..."), String::from("..S")]).unwrap();
-        assert!(grid.0.edge_count() == 4);  
+        assert_eq!(
+            grid.get_neighbours(&Tile { pos: (2, 2), pipe: Pipe::Start }), 
+            vec![
+                Tile { pos: (1, 2), pipe: Pipe::Ground }, 
+                Tile { pos: (2, 1), pipe: Pipe::Ground }, 
+            ]
+        );
+        assert_eq!(
+            grid.get_neighbours(&Tile { pos: (0, 1), pipe: Pipe::NorthEast }), 
+            vec![Tile { pos: (0, 2), pipe: Pipe::Ground }]
+        );
+        assert_eq!(
+            grid.get_neighbours(&Tile { pos: (0, 0), pipe: Pipe::NorthEast }), 
+            vec![Tile { pos: (0, 1), pipe: Pipe::NorthEast }]
+        );
     }
 
     #[test]
