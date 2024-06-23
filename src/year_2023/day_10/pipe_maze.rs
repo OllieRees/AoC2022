@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 
 use crate::ParseInputError;
 use itertools::Itertools;
-use petgraph::{graphmap::DiGraphMap, visit::IntoNodeReferences};
-
+use petgraph::{graph, graphmap, prelude, visit::IntoNodeReferences};
 
 type Position = (usize, usize);
 
@@ -63,13 +62,13 @@ impl Tile {
 
 
 #[derive(Debug, Clone)]
-struct PipeMaze(DiGraphMap<Tile, ()>);
+struct PipeMaze(graphmap::DiGraphMap<Tile, ()>);
 
 impl TryFrom<Vec<String>> for PipeMaze {
     type Error = ParseInputError;
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-        let mut grid: DiGraphMap<Tile, ()> = DiGraphMap::new();
+        let mut grid: graphmap::DiGraphMap<Tile, ()> = graphmap::DiGraphMap::new();
 
         let nodes: Vec<Tile> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)| 
             row.chars().enumerate().map(|(column_n, pipe_letter): (usize, char)| 
@@ -84,9 +83,11 @@ impl TryFrom<Vec<String>> for PipeMaze {
         };
 
         for node in nodes.iter() {
-            grid.add_node(*node);
-            for neighbour in get_neighbours_for_node(node) {
-                grid.add_edge(*node, *neighbour, ());
+            if node.pipe != Pipe::Ground {
+                grid.add_node(*node);
+                for neighbour in get_neighbours_for_node(node) {
+                    grid.add_edge(*node, *neighbour, ());
+                }
             }
         }
         Ok(PipeMaze(grid))
@@ -102,29 +103,36 @@ impl PipeMaze {
         self.0.neighbors(self.0.node_references().find_or_first(|(node, _)| node == tile).unwrap().0).collect()
     }
 
-    pub fn get_cycle_from_start(&self) -> Vec<Tile> {
-        // https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm#Stack_invariant
-        // Use a stack to find the cycle
-        Vec::new()
+    fn get_pipe_count(&self) -> usize {
+        self.0.nodes().into_iter().filter(|n| n.pipe != Pipe::Ground).count()
     }
 
-    fn get_position_from_start(&self) -> Position {
-        self.0.nodes().find_or_first(|tile| tile.pipe ==  Pipe::Start).unwrap().pos
+    pub fn get_cycle_from_start(&self) -> Option<Vec<Tile>> {
+        let graph: prelude::Graph<Tile, ()> = self.0.to_owned().into_graph::<u32>();
+        let start_node_index: prelude::NodeIndex = graph.node_indices().find(|i: &prelude::NodeIndex| graph[*i].pipe == Pipe::Start).unwrap();
+        
+        let cycles_with_start_node: Vec<Vec<Tile>> = petgraph::algo::tarjan_scc(&graph).into_iter().filter(
+            |cycle: &Vec<graph::NodeIndex<_>>| cycle.contains(&start_node_index) // Only cycles with start
+        ).map(
+            |cycle: Vec<graph::NodeIndex>| cycle.into_iter().map(|i| graph[i]).collect()  // node index -> tile
+        ).collect();
+
+        cycles_with_start_node.into_iter().max_by(
+            |x: &Vec<Tile>, y: &Vec<Tile>| x.len().cmp(&y.len())  // Get longest cycle
+        )
     }
 }
 
 
 pub fn solve(lines: Vec<String>) {
     if let Ok(grid) = PipeMaze::try_from(lines) {
-        println!("{}", grid.get_cycle_from_start().len() / 2 as usize);
+        println!("{}", grid.get_cycle_from_start().unwrap().len() / 2 as usize);
     }
 }
 
 
 #[cfg(test)]
 mod pipe_maze {
-    use petgraph::{dot::Dot, visit::IntoNeighbors};
-
     use crate::year_2023::day_10::pipe_maze::*;
 
     const GRID: [&str; 5] = ["..F7.", ".FJ|.", "SJ.L7", "|F--J", "LJ..."];
@@ -168,7 +176,6 @@ mod pipe_maze {
         assert!(grid_3x3.0.contains_node(Tile {pos: (0, 1), pipe: Pipe::Horizontal}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (0, 2), pipe: Pipe::SouthWest}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (1, 0), pipe: Pipe::Vertical}));
-        assert!(grid_3x3.0.contains_node(Tile {pos: (1, 1), pipe: Pipe::Ground}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (1, 2), pipe: Pipe::Vertical}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (2, 0), pipe: Pipe::NorthEast}));
         assert!(grid_3x3.0.contains_node(Tile {pos: (2, 1), pipe: Pipe::Horizontal}));
@@ -217,21 +224,15 @@ mod pipe_maze {
     }
 
     #[test]
-    fn get_start_position() {
+    fn get_indicies() {
         let grid: PipeMaze = PipeMaze::try_from(grid()).unwrap();
-        assert_eq!(grid.get_position_from_start(), (2, 0));
+        println!("{:?}", grid.0.into_graph::<usize>().node_indices().nth(0));
     }
 
-    // #[test]
-    // fn get_cycle_from_start_practice_grid() {
-    //     let grid: Grid = Grid::from_lines(grid()).unwrap();
-    //     assert_eq!(
-    //         grid.get_cycle_from_start(), 
-    //         vec![
-    //             (2, 0), (2, 1), (1, 1), (1, 2), (0, 2), (0, 3), (1, 3), (2, 3), 
-    //             (2, 4), 
-    //             (3, 4), (3, 3), (3, 2), (3, 1) , (4, 1), (4, 0), (3, 0), (2, 0)
-    //         ]
-    //     );
-    // }
+
+    #[test]
+    fn get_cycle_from_start_practice_grid() {
+        let grid: PipeMaze = PipeMaze::try_from(grid()).unwrap();
+        assert_eq!(grid.get_cycle_from_start().unwrap().len(), 16);
+    }
  }
