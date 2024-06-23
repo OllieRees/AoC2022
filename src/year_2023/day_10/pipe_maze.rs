@@ -103,10 +103,6 @@ impl PipeMaze {
         self.0.neighbors(self.0.node_references().find_or_first(|(node, _)| node == tile).unwrap().0).collect()
     }
 
-    fn get_pipe_count(&self) -> usize {
-        self.0.nodes().into_iter().filter(|n| n.pipe != Pipe::Ground).count()
-    }
-
     pub fn get_cycle_from_start(&self) -> Option<Vec<Tile>> {
         let graph: prelude::Graph<Tile, ()> = self.0.to_owned().into_graph::<u32>();
         let start_node_index: prelude::NodeIndex = graph.node_indices().find(|i: &prelude::NodeIndex| graph[*i].pipe == Pipe::Start).unwrap();
