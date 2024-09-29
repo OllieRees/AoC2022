@@ -90,8 +90,7 @@ fn main() {
     if let Some(solver) = get_module(year, day) { 
         let input_file_path = | solution_type: AnswerMode | get_file_path(solution_type, year, day); 
         println!("Reading answers for day {day} in {year}");
-        let input = read_problem_input_file(input_file_path(AnswerMode::Real));
-        solver(input);
+        solver(read_problem_input_file(input_file_path(AnswerMode::Real)));
     } else {
         println!("Solution for day {day} in {year} doesn't exist");
     }
