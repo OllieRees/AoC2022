@@ -68,16 +68,20 @@ impl TryFrom<Vec<String>> for PipeMaze {
     type Error = ParseInputError;
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-        let mut grid: graphmap::DiGraphMap<Tile, ()> = graphmap::DiGraphMap::new();
-
-        let nodes: Vec<Tile> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)| 
+        let nodes: Vec<Tile> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)|
             row.chars().enumerate().map(|(column_n, pipe_letter): (usize, char)| 
                 Tile::new((row_n, column_n), pipe_letter)
             ).collect()
         ).collect::<Result<Vec<Vec<Tile>>, ParseInputError>>()?.into_iter().flatten().collect();
+        Ok(Self::from(nodes))
+    }
+}
 
+impl From<Vec<Tile>> for PipeMaze {
+    fn from(nodes: Vec<Tile>) -> Self {
+        let mut grid: graphmap::DiGraphMap<Tile, ()> = graphmap::DiGraphMap::new();
         let position_map: HashMap<Position, Tile> = nodes.iter().map(|node: &Tile| (node.pos, *node)).collect();
-    
+
         let get_neighbours_for_node = |node: &Tile| -> Vec<&Tile> {
             node.get_connected_positions().iter().filter_map(|pos: &(usize, usize)| position_map.get(pos)).collect()
         };
@@ -90,8 +94,8 @@ impl TryFrom<Vec<String>> for PipeMaze {
                 }
             }
         }
-        Ok(PipeMaze(grid))
-    }   
+        PipeMaze(grid)
+    }
 }
 
 impl PipeMaze {
@@ -122,7 +126,9 @@ impl PipeMaze {
 
 pub fn solve(lines: Vec<String>) {
     if let Ok(grid) = PipeMaze::try_from(lines) {
-        println!("{}", grid.get_cycle_from_start().unwrap().len() / 2 as usize);
+        if let Some(cycle)  = grid.get_cycle_from_start() {
+            println!("{}", cycle.len() / 2 as usize);
+        }
     }
 }
 
