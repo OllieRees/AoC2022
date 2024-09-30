@@ -7,9 +7,6 @@ use crate::ParseInputError;
 #[derive(Debug, PartialEq, Eq)]
 struct ParseMoveError;
 
-#[derive(Debug, PartialEq, Eq)]
-struct ParseRoundError;
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Move {
     Rock = 1,
