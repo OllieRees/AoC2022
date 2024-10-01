@@ -4,6 +4,7 @@ use crate::ParseInputError;
 
 use itertools::Itertools;
 use petgraph::{graph, graphmap, prelude};
+use geo::{Point, LineString, Polygon, Contains};
 
 
 #[derive(Debug)]
@@ -22,6 +23,7 @@ impl Error for NoCyclesInGraph {
 }
 
 type Position = (usize, usize);
+
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 enum Pipe { Start, Vertical, Horizontal, NorthEast, NorthWest, SouthEast, SouthWest, Ground }
@@ -127,15 +129,12 @@ impl Into<prelude::Graph<Tile, ()>> for &PipeMaze {
 }
 
 impl PipeMaze {
-    pub fn cycle_positions(&self) -> Option<(impl Iterator<Item=Position> + '_)> {
-        let graph: prelude::Graph<Tile, ()> = self.into();
-        match petgraph::algo::is_cyclic_directed(&graph) {
-            false => None,
-            true => Some(self.0.nodes().map(|n: Tile| n.pos).into_iter())
-        }
+    pub fn maze_is_cycle(&self) -> bool {
+        // TODO implement
+        true
     }
 
-    pub fn cycle_from_start(&self) -> Option<Vec<Tile>> {
+    pub fn cycle_from_start(&self) -> Vec<Tile> {
         let graph: prelude::Graph<Tile, ()> = self.into();
         let start_node_index: prelude::NodeIndex = graph.node_indices().find(|i: &prelude::NodeIndex| graph[*i].pipe == Pipe::Start).unwrap();
 
@@ -147,16 +146,40 @@ impl PipeMaze {
 
         cycles_with_start_node.into_iter().max_by(
             |x: &Vec<Tile>, y: &Vec<Tile>| x.len().cmp(&y.len())
-        )
+        ).unwrap()
+    }
+
+    fn grid_positions(&self) -> impl Iterator<Item=Position> {
+        let node_pos: Vec<Position> = self.0.nodes().map(|n: Tile| n.pos).collect();
+        let row_range = node_pos.iter().min_by(|x, y| x.0.cmp(&y.0)).unwrap().0..=node_pos.iter().max_by(|x, y| x.0.cmp(&y.0)).unwrap().0;
+        let col_range = node_pos.iter().min_by(|x, y| x.1.cmp(&y.1)).unwrap().1..=node_pos.iter().max_by(|x, y| x.1.cmp(&y.1)).unwrap().1;
+        row_range.cartesian_product(col_range)
+    }
+
+    fn polygon(&self) -> Result<Polygon, NoCyclesInGraph> {
+        match self.maze_is_cycle() {
+            false => Err(NoCyclesInGraph),
+            true => Ok(Polygon::new(
+                LineString::from(self.0.nodes().map(|n: Tile| (n.pos.0 as f64, n.pos.1 as f64) as (f64, f64)).collect::<Vec<(f64, f64)>>()),
+                vec![]
+            ))
+        }
+    }
+
+    pub fn interior_positions(&self) -> Option<impl Iterator<Item=Position>> {
+        match self.polygon() {
+            Err(_) => None,
+            Ok(polygon) => Some(self.grid_positions().filter(move |pos: &Position| polygon.contains(&Point::new(pos.0 as f64, pos.1 as f64))).into_iter())
+        }
+
     }
 }
 
-
 pub fn solve(lines: Vec<String>) {
     if let Ok(grid) = PipeMaze::try_from(lines) {
-        if let Some(cycle)  = grid.cycle_from_start() {
-            println!("{}", cycle.len() / 2 as usize);
-        }
+        let cycle: Vec<Tile> = grid.cycle_from_start();
+        println!("{}", cycle.len() / 2 as usize);
+        println!("{}", PipeMaze::from(cycle).interior_positions().unwrap().collect::<Vec<_>>().len());
     }
 }
 
@@ -227,6 +250,44 @@ mod test_pipe_maze {
     #[test]
     fn get_cycle_from_start_practice_grid() {
         let grid: PipeMaze = PipeMaze::try_from(grid()).unwrap();
-        assert_eq!(grid.cycle_from_start().unwrap().len(), 16);
+        assert_eq!(grid.cycle_from_start().len(), 16);
+    }
+
+    #[test]
+    fn get_grid_positions() {
+        let grid: Vec<String> = vec![
+            "...........".to_string(),
+            ".S-------7.".to_string(),
+            ".|F-----7|.".to_string(),
+            ".||.....||.".to_string(),
+            ".||.....||.".to_string(),
+            ".|L-7.F-J|.".to_string(),
+            ".|..|.|..|.".to_string(),
+            ".L--J.L--J.".to_string(),
+            "...........".to_string(),
+        ];
+        let maze: PipeMaze = PipeMaze::try_from(grid).unwrap();
+        assert_eq!(
+            maze.grid_positions().collect::<Vec<Position>>(),
+            (1..=7).cartesian_product(1..=9).collect::<Vec<Position>>()
+        );
+    }
+
+    #[test]
+    fn get_grid_positions_cycle_encompasses_boundary() {
+        let grid: Vec<String> = vec![
+            "S-------7".to_string(),
+            "|F-----7|".to_string(),
+            "||.....||".to_string(),
+            "||.....||".to_string(),
+            "|L-7.F-J|".to_string(),
+            "|..|.|..|".to_string(),
+            "L--J.L--J".to_string(),
+        ];
+        let grid: PipeMaze = PipeMaze::try_from(grid).unwrap();
+        assert_eq!(
+            grid.grid_positions().collect::<Vec<Position>>(),
+            (0..=6).cartesian_product(0..=8).collect::<Vec<Position>>()
+        );
     }
 }
