@@ -1,8 +1,9 @@
-use std::{any::Any, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::ParseInputError;
+
 use itertools::Itertools;
-use petgraph::{graph, graphmap, prelude, visit::IntoNodeReferences};
+use petgraph::{graph, graphmap, prelude};
 
 type Position = (usize, usize);
 
@@ -54,7 +55,7 @@ impl Tile {
         positions().into_iter().filter_map(|signed_pos: (i32, i32)| {
             match (usize::try_from(signed_pos.0), usize::try_from(signed_pos.1)) {
                 (Ok(x), Ok(y)) => Some((x, y)),
-                _ => None 
+                _ => None
             }
         }).collect()
     }
@@ -69,7 +70,7 @@ impl TryFrom<Vec<String>> for PipeMaze {
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
         let nodes: Vec<Tile> = value.into_iter().enumerate().map(|(row_n, row): (usize, String)|
-            row.chars().enumerate().map(|(column_n, pipe_letter): (usize, char)| 
+            row.chars().enumerate().map(|(column_n, pipe_letter): (usize, char)|
                 Tile::new((row_n, column_n), pipe_letter)
             ).collect()
         ).collect::<Result<Vec<Vec<Tile>>, ParseInputError>>()?.into_iter().flatten().collect();
@@ -99,18 +100,26 @@ impl From<Vec<Tile>> for PipeMaze {
 }
 
 impl PipeMaze {
-    pub fn get_tile(&self, position: Position) -> Option<Tile> {
-        self.0.nodes().find_or_first(|tile| tile.pos == position)
+    fn into_graph(&self) -> prelude::Graph<Tile, ()> {
+        self.0.to_owned().into_graph::<u32>()
     }
 
-    pub fn get_neighbours(&self, tile: &Tile) -> Vec<Tile> {
-        self.0.neighbors(self.0.node_references().find_or_first(|(node, _)| node == tile).unwrap().0).collect()
+    fn grid_positions(&self) -> impl Iterator<Item=Position> + '_ {
+        let node_pos: Vec<Position> = self.0.nodes().filter_map(|n: Tile| {
+            match n.pipe {
+                Pipe::Ground => None, // Grid is defined as being encompassed by non-Ground tiles
+                _ => Some(n.pos)
+            }
+        }).collect();
+        let row_range = node_pos.iter().min_by(|x, y| x.0.cmp(&y.0)).unwrap().0..=node_pos.iter().max_by(|x, y| x.0.cmp(&y.0)).unwrap().0;
+        let col_range = node_pos.iter().min_by(|x, y| x.1.cmp(&y.1)).unwrap().1..=node_pos.iter().max_by(|x, y| x.1.cmp(&y.1)).unwrap().1;
+        row_range.cartesian_product(col_range)
     }
 
     pub fn get_cycle_from_start(&self) -> Option<Vec<Tile>> {
-        let graph: prelude::Graph<Tile, ()> = self.0.to_owned().into_graph::<u32>();
+        let graph: prelude::Graph<Tile, ()> = self.into_graph();
         let start_node_index: prelude::NodeIndex = graph.node_indices().find(|i: &prelude::NodeIndex| graph[*i].pipe == Pipe::Start).unwrap();
-        
+
         let cycles_with_start_node: Vec<Vec<Tile>> = petgraph::algo::tarjan_scc(&graph).into_iter().filter(
             |cycle: &Vec<graph::NodeIndex<_>>| cycle.contains(&start_node_index) // Only cycles with start
         ).map(
@@ -121,6 +130,13 @@ impl PipeMaze {
             |x: &Vec<Tile>, y: &Vec<Tile>| x.len().cmp(&y.len())  // Get longest cycle
         )
     }
+
+    // pub fn get_interior_positions(&self) -> Option<Iter<Position>> {
+    //     match petgraph::algo::is_cyclic_directed(&self.into_graph()) {
+    //         false => None,
+    //         true => Some(self.grid_positions())
+    //     }
+    // }
 }
 
 
@@ -134,7 +150,7 @@ pub fn solve(lines: Vec<String>) {
 
 
 #[cfg(test)]
-mod pipe_maze {
+mod test_pipe_maze {
     use crate::year_2023::day_10::pipe_maze::*;
 
     const GRID: [&str; 5] = ["..F7.", ".FJ|.", "SJ.L7", "|F--J", "LJ..."];
@@ -185,42 +201,6 @@ mod pipe_maze {
     }
 
     #[test]
-    fn parse_grid_neighbours_successfully() {
-        let grid: PipeMaze = PipeMaze::try_from(vec![String::from("S-7"), String::from("|.|"), String::from("L-J")]).unwrap();
-        assert_eq!(
-            grid.get_neighbours(&Tile { pos: (0, 0), pipe: Pipe::Start }), 
-            vec![Tile {pos: (1, 0), pipe: Pipe::Vertical}, Tile {pos: (0, 1), pipe: Pipe::Horizontal}]
-        );
-
-        let grid: PipeMaze = PipeMaze::try_from(vec![String::from("..."), String::from(".S."), String::from("...")]).unwrap();
-        assert_eq!(
-            grid.get_neighbours(&Tile { pos: (1, 1), pipe: Pipe::Start }), 
-            vec![
-                Tile { pos: (0, 1), pipe: Pipe::Ground }, 
-                Tile { pos: (2, 1), pipe: Pipe::Ground }, 
-                Tile { pos: (1, 0), pipe: Pipe::Ground }, 
-                Tile { pos: (1, 2), pipe: Pipe::Ground }
-            ]
-        );
-        let grid: PipeMaze = PipeMaze::try_from(vec![String::from("LL."), String::from("..."), String::from("..S")]).unwrap();
-        assert_eq!(
-            grid.get_neighbours(&Tile { pos: (2, 2), pipe: Pipe::Start }), 
-            vec![
-                Tile { pos: (1, 2), pipe: Pipe::Ground }, 
-                Tile { pos: (2, 1), pipe: Pipe::Ground }, 
-            ]
-        );
-        assert_eq!(
-            grid.get_neighbours(&Tile { pos: (0, 1), pipe: Pipe::NorthEast }), 
-            vec![Tile { pos: (0, 2), pipe: Pipe::Ground }]
-        );
-        assert_eq!(
-            grid.get_neighbours(&Tile { pos: (0, 0), pipe: Pipe::NorthEast }), 
-            vec![Tile { pos: (0, 1), pipe: Pipe::NorthEast }]
-        );
-    }
-
-    #[test]
     fn parse_grid_with_one_bad_row() {
         assert!(PipeMaze::try_from(vec!["..F7.".to_string(), ".FX|.".to_string(), "SJ.L7".to_string()]).is_err());
     }
@@ -236,5 +216,43 @@ mod pipe_maze {
     fn get_cycle_from_start_practice_grid() {
         let grid: PipeMaze = PipeMaze::try_from(grid()).unwrap();
         assert_eq!(grid.get_cycle_from_start().unwrap().len(), 16);
+    }
+
+    #[test]
+    fn get_grid_positions() {
+        let grid: Vec<String> = vec![
+            "...........".to_string(),
+            ".S-------7.".to_string(),
+            ".|F-----7|.".to_string(),
+            ".||.....||.".to_string(),
+            ".||.....||.".to_string(),
+            ".|L-7.F-J|.".to_string(),
+            ".|..|.|..|.".to_string(),
+            ".L--J.L--J.".to_string(),
+            "...........".to_string(),
+        ];
+        let maze: PipeMaze = PipeMaze::try_from(grid).unwrap();
+        assert_eq!(
+            maze.grid_positions().collect::<Vec<Position>>(),
+            (1..=7).cartesian_product(1..=9).collect::<Vec<Position>>()
+        );
+    }
+
+    #[test]
+    fn get_grid_positions_cycle_encompasses_boundary() {
+        let grid: Vec<String> = vec![
+            "S-------7".to_string(),
+            "|F-----7|".to_string(),
+            "||.....||".to_string(),
+            "||.....||".to_string(),
+            "|L-7.F-J|".to_string(),
+            "|..|.|..|".to_string(),
+            "L--J.L--J".to_string(),
+        ];
+        let grid: PipeMaze = PipeMaze::try_from(grid).unwrap();
+        assert_eq!(
+            grid.grid_positions().collect::<Vec<Position>>(),
+            (0..=6).cartesian_product(0..=8).collect::<Vec<Position>>()
+        );
     }
  }
