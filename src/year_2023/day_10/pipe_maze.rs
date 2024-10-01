@@ -81,7 +81,12 @@ impl TryFrom<Vec<String>> for PipeMaze {
 impl From<Vec<Tile>> for PipeMaze {
     fn from(nodes: Vec<Tile>) -> Self {
         let mut grid: graphmap::DiGraphMap<Tile, ()> = graphmap::DiGraphMap::new();
-        let position_map: HashMap<Position, Tile> = nodes.iter().map(|node: &Tile| (node.pos, *node)).collect();
+        let position_map: HashMap<Position, Tile> = nodes.iter().filter_map(|node: &Tile| {
+            match node.pipe {
+                Pipe::Ground => None,
+                _ => Some((node.pos, *node))
+            }
+        }).collect();
 
         let get_neighbours_for_node = |node: &Tile| -> Vec<&Tile> {
             node.get_connected_positions().iter().filter_map(|pos: &(usize, usize)| position_map.get(pos)).collect()
@@ -105,12 +110,7 @@ impl PipeMaze {
     }
 
     fn grid_positions(&self) -> impl Iterator<Item=Position> + '_ {
-        let node_pos: Vec<Position> = self.0.nodes().filter_map(|n: Tile| {
-            match n.pipe {
-                Pipe::Ground => None, // Grid is defined as being encompassed by non-Ground tiles
-                _ => Some(n.pos)
-            }
-        }).collect();
+        let node_pos: Vec<Position> = self.0.nodes().map(|n: Tile| n.pos).collect();
         let row_range = node_pos.iter().min_by(|x, y| x.0.cmp(&y.0)).unwrap().0..=node_pos.iter().max_by(|x, y| x.0.cmp(&y.0)).unwrap().0;
         let col_range = node_pos.iter().min_by(|x, y| x.1.cmp(&y.1)).unwrap().1..=node_pos.iter().max_by(|x, y| x.1.cmp(&y.1)).unwrap().1;
         row_range.cartesian_product(col_range)
