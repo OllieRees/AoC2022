@@ -76,6 +76,7 @@ fn get_module(year: u32, day: u8) -> Option<impl Fn(Vec<String>)> {
                 7 => Some(day_7::camel_cards::solve),
                 8 => Some(day_8::wasteland_traversal::solve),
                 9 => Some(day_9::mirage_maintenance::solve),
+                10 => Some(day_10::pipe_maze::solve),
                 _ => None,
             }
         }
@@ -89,8 +90,7 @@ fn main() {
     if let Some(solver) = get_module(year, day) { 
         let input_file_path = | solution_type: AnswerMode | get_file_path(solution_type, year, day); 
         println!("Reading answers for day {day} in {year}");
-        let input = read_problem_input_file(input_file_path(AnswerMode::Real));
-        solver(input);
+        solver(read_problem_input_file(input_file_path(AnswerMode::Real)));
     } else {
         println!("Solution for day {day} in {year} doesn't exist");
     }
