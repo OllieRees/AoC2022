@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 fn group_calories(lines: Vec<String>) -> Vec<Vec<u32>> {
     let mut calorie_groups: Vec<Vec<u32>> = Vec::new();
-    for (key, group) in &lines.into_iter().group_by(|line| !line.is_empty()) {
+    for (key, group) in &lines.into_iter().chunk_by(|line| !line.is_empty()) {
         if key {
             calorie_groups.push(group.map(|calorie| calorie.parse::<u32>().unwrap()).collect::<Vec<u32>>());
         }

@@ -53,7 +53,7 @@ fn get_elfgroup_badge(group: ElfGroup) -> Item {
 
 fn collect_elf_group(rucksacks: Vec<Rucksack>) -> Vec<ElfGroup> {
     let mut group = Vec::new();
-    for (_, enum_grp) in &rucksacks.into_iter().enumerate().group_by(|(i, _)| i / 3) {
+    for (_, enum_grp) in &rucksacks.into_iter().enumerate().chunk_by(|(i, _)| i / 3) {
         let enum_grp: ElfGroup = enum_grp.map(|(_, e)| e).collect_tuple().unwrap();
         group.push(enum_grp);
     }
