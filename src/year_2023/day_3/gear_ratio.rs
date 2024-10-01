@@ -15,7 +15,7 @@ impl Position {
     fn adjacent_positions(&self) -> Vec<(usize, usize)> {
         let start_x = if self.start.0 == 0 {self.start.0} else {self.start.0 - 1};
         let start_y = if self.start.1 == 0 {self.start.1} else {self.start.1 - 1};
-        iproduct!((start_x..(self.end.0 + 2)), (start_y..(self.end.1 + 2))).filter(|pos: &(usize, usize)| !self.is_in_position(*pos)).collect()
+        iproduct!(start_x..(self.end.0 + 2), start_y..(self.end.1 + 2)).filter(|pos: &(usize, usize)| !self.is_in_position(*pos)).collect()
     }
 }
 
