@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use regex::Regex;
 
 use crate::ParseInputError;
@@ -33,7 +32,7 @@ impl TryFrom<String> for ConditionRecordEntry {
     type Error = ParseInputError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let re = Regex::new("(?<springs>.*) (?<nums>.*)").unwrap();
+        let re = Regex::new("(?<springs>[#?.]+) (?<nums>[0-9,]+)").unwrap();
         let caps = re.captures(value.as_str()).ok_or(ParseInputError {details: format!("Couldn't Capture Record, {}", value)})?;
         Ok(ConditionRecordEntry{
             springs: caps.name("springs").unwrap().as_str().chars().map(|c| SpringState::try_from(c)).collect::<Result<Vec<SpringState>, ParseInputError>>()?,
