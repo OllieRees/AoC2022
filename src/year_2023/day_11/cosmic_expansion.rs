@@ -54,7 +54,6 @@ impl From<Vec<String>> for Image {
             }).flatten().collect();
         Image {size, galaxies}
     }
-
 }
 
 
