@@ -1,21 +1,17 @@
 use std::collections::HashSet;
 
-
-struct Path {
-    start_point: (usize, usize),
-    end_point: (usize, usize)
-}
-
-impl Path {
-    pub fn shortest_path_length(&self) -> usize {
-        usize::abs_diff(self.end_point.0, self.start_point.0) + usize::abs_diff(self.end_point.1, self.start_point.1)
-    }
-}
+use itertools::Itertools;
 
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 struct Galaxy {
     coord: (usize, usize)
+}
+
+impl Galaxy {
+    pub fn shortest_path_to_other_galaxy(&self, other: &Galaxy) -> usize {
+        usize::abs_diff(other.coord.0, self.coord.0) + usize::abs_diff(other.coord.1, self.coord.1)
+    }
 }
 
 struct Image {
@@ -29,15 +25,28 @@ impl Image {
         let galaxy_rows: HashSet<usize> = self.galaxies.iter().map(|galaxies| galaxies.coord.0).collect();
         (&range - &galaxy_rows).into_iter()
     }
+
     fn expandable_column_indices(&self) -> impl Iterator<Item=usize> + '_ {
         let range: HashSet<usize> = HashSet::from_iter(0..self.size.1);
         let galaxy_rows: HashSet<usize> = self.galaxies.iter().map(|galaxies| galaxies.coord.1).collect();
         (&range - &galaxy_rows).into_iter()
     }
-    pub fn expandable_position_of_galaxy(&self, galaxy: &Galaxy) -> Galaxy {
+
+    fn expandable_position_of_galaxy(&self, galaxy: &Galaxy) -> Galaxy {
         let y_delta: usize = self.expandable_row_indices().filter(|x| *x < galaxy.coord.0).count();
         let x_delta: usize = self.expandable_column_indices().filter(|x| *x < galaxy.coord.1).count();
         Galaxy { coord: (galaxy.coord.0 + y_delta, galaxy.coord.1 + x_delta) }
+    }
+
+    pub fn expand_image(&self) -> Self {
+        Image {
+            size: (self.size.0 + self.expandable_row_indices().count(), self.size.1 + self.expandable_column_indices().count()),
+            galaxies: self.galaxies.iter().map(|g| self.expandable_position_of_galaxy(g)).collect()
+        }
+    }
+
+    pub fn galaxy_pairs(&self) -> impl Iterator<Item=(&Galaxy, &Galaxy)> + '_ {
+        self.galaxies.iter().combinations(2).map(|v| (v[0], v[1]))
     }
 }
 
@@ -55,6 +64,8 @@ impl From<Vec<String>> for Image {
 
 pub fn solve(lines: Vec<String>) {
     let image: Image = Image::from(lines);
+    let shortest_paths: usize = image.expand_image().galaxy_pairs().map(|(x, y)| x.shortest_path_to_other_galaxy(y)).sum();
+    println!("{}", shortest_paths);
 }
 
 
@@ -63,6 +74,11 @@ mod test_cosmic_expansion {
     use itertools::Itertools;
 
     use super::{Galaxy, HashSet, Image};
+
+    #[test]
+    fn shortest_path_between_galaxies() {
+        assert_eq!(Galaxy {coord: (6, 1)}.shortest_path_to_other_galaxy(&Galaxy {coord: (11, 5)}), 9);
+    }
 
     #[test]
     fn capture_image() {
@@ -180,5 +196,23 @@ mod test_cosmic_expansion {
             "#...#.....".to_string(),
         ]);
         assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (8, 7)}), Galaxy{coord: (10, 9)});
+    }
+
+    #[test]
+    fn galaxy_pairs() {
+    let image: Image = Image::from(vec![
+            "...#......".to_string(),
+            ".......#..".to_string(),
+            "#.........".to_string(),
+            "..........".to_string(),
+            "......#...".to_string(),
+            ".#........".to_string(),
+            ".........#".to_string(),
+            "..........".to_string(),
+            ".......#..".to_string(),
+            "#...#.....".to_string(),
+        ]);
+        let galaxy_pairs: Vec<(&Galaxy, &Galaxy)> = image.galaxy_pairs().collect();
+        assert_eq!(galaxy_pairs.len(), 36);
     }
 }
