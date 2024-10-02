@@ -1,5 +1,18 @@
 use std::collections::HashSet;
 
+
+struct Path {
+    start_point: (usize, usize),
+    end_point: (usize, usize)
+}
+
+impl Path {
+    pub fn shortest_path_length(&self) -> usize {
+        usize::abs_diff(self.end_point.0, self.start_point.0) + usize::abs_diff(self.end_point.1, self.start_point.1)
+    }
+}
+
+
 #[derive(Debug, Hash, PartialEq, Eq)]
 struct Galaxy {
     coord: (usize, usize)
@@ -11,15 +24,20 @@ struct Image {
 }
 
 impl Image {
-    pub fn expandable_rows(&self) -> impl Iterator<Item=usize> + '_ {
+    fn expandable_row_indices(&self) -> impl Iterator<Item=usize> + '_ {
         let range: HashSet<usize> = HashSet::from_iter(0..self.size.0);
         let galaxy_rows: HashSet<usize> = self.galaxies.iter().map(|galaxies| galaxies.coord.0).collect();
         (&range - &galaxy_rows).into_iter()
     }
-    pub fn expandable_columns(&self) -> impl Iterator<Item=usize> + '_ {
+    fn expandable_column_indices(&self) -> impl Iterator<Item=usize> + '_ {
         let range: HashSet<usize> = HashSet::from_iter(0..self.size.1);
         let galaxy_rows: HashSet<usize> = self.galaxies.iter().map(|galaxies| galaxies.coord.1).collect();
         (&range - &galaxy_rows).into_iter()
+    }
+    pub fn expandable_position_of_galaxy(&self, galaxy: &Galaxy) -> Galaxy {
+        let y_delta: usize = self.expandable_row_indices().filter(|x| *x < galaxy.coord.0).count();
+        let x_delta: usize = self.expandable_column_indices().filter(|x| *x < galaxy.coord.1).count();
+        Galaxy { coord: (galaxy.coord.0 + y_delta, galaxy.coord.1 + x_delta) }
     }
 }
 
@@ -31,17 +49,20 @@ impl From<Vec<String>> for Image {
             }).flatten().collect();
         Image {size, galaxies}
     }
+
 }
+
 
 pub fn solve(lines: Vec<String>) {
-
+    let image: Image = Image::from(lines);
 }
+
 
 #[cfg(test)]
 mod test_cosmic_expansion {
     use itertools::Itertools;
 
-    use super::{Galaxy, Image, HashSet};
+    use super::{Galaxy, HashSet, Image};
 
     #[test]
     fn capture_image() {
@@ -90,7 +111,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_rows().sorted().collect::<Vec<usize>>(), vec![3,7]);
+        assert_eq!(image.expandable_row_indices().sorted().collect::<Vec<usize>>(), vec![3,7]);
     }
 
     #[test]
@@ -107,6 +128,57 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_columns().sorted().collect::<Vec<usize>>(), vec![2,5,8]);
+        assert_eq!(image.expandable_column_indices().sorted().collect::<Vec<usize>>(), vec![2,5,8]);
+    }
+
+    #[test]
+    fn galaxy_expands_by_one_column() {
+          let image: Image = Image::from(vec![
+            "...#......".to_string(),
+            ".......#..".to_string(),
+            "#.........".to_string(),
+            "..........".to_string(),
+            "......#...".to_string(),
+            ".#........".to_string(),
+            ".........#".to_string(),
+            "..........".to_string(),
+            ".......#..".to_string(),
+            "#...#.....".to_string(),
+        ]);
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (0, 3)}), Galaxy{coord: (0, 4)});
+    }
+
+    #[test]
+    fn galaxy_expands_by_one_row() {
+          let image: Image = Image::from(vec![
+            "...#......".to_string(),
+            ".......#..".to_string(),
+            "#.........".to_string(),
+            "..........".to_string(),
+            "......#...".to_string(),
+            ".#........".to_string(),
+            ".........#".to_string(),
+            "..........".to_string(),
+            ".......#..".to_string(),
+            "#...#.....".to_string(),
+        ]);
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (5, 1)}), Galaxy{coord: (6, 1)});
+    }
+
+    #[test]
+    fn galaxy_expands_by_rows_and_columns() {
+          let image: Image = Image::from(vec![
+            "...#......".to_string(),
+            ".......#..".to_string(),
+            "#.........".to_string(),
+            "..........".to_string(),
+            "......#...".to_string(),
+            ".#........".to_string(),
+            ".........#".to_string(),
+            "..........".to_string(),
+            ".......#..".to_string(),
+            "#...#.....".to_string(),
+        ]);
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (8, 7)}), Galaxy{coord: (10, 9)});
     }
 }
