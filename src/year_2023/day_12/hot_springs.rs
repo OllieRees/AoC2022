@@ -23,6 +23,7 @@ impl TryFrom<char> for SpringState {
     }
 }
 
+#[derive(Debug)]
 struct ConditionRecordEntry {
     springs: Vec<SpringState>,
     failsafe: Vec<usize>
@@ -41,6 +42,7 @@ impl TryFrom<String> for ConditionRecordEntry {
     }
 }
 
+#[derive(Debug)]
 struct ConditionRecord {
     entries: Vec<ConditionRecordEntry>
 }
@@ -49,14 +51,16 @@ impl TryFrom<Vec<String>> for ConditionRecord {
     type Error = ParseInputError;
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-        let entries: Vec<ConditionRecordEntry> = value.into_iter().map(|s| ConditionRecordEntry::try_from(s)).collect::<Result<Vec<ConditionRecordEntry>, ParseInputError>>()?;
+        let entries = value.into_iter().filter(|s| s != "").map(|s| ConditionRecordEntry::try_from(s)).collect::<Result<Vec<ConditionRecordEntry>, ParseInputError>>()?;
         Ok(ConditionRecord {entries})
     }
 }
 
 
 pub fn solve(lines: Vec<String>) {
-
+    if let Ok(record) = ConditionRecord::try_from(lines) {
+        println!("{:?}", record);
+    }
 }
 
 #[cfg(test)]
