@@ -32,16 +32,16 @@ impl Image {
         (&range - &galaxy_rows).into_iter()
     }
 
-    fn expandable_position_of_galaxy(&self, galaxy: &Galaxy) -> Galaxy {
-        let y_delta: usize = self.expandable_row_indices().filter(|x| *x < galaxy.coord.0).count();
-        let x_delta: usize = self.expandable_column_indices().filter(|x| *x < galaxy.coord.1).count();
+    fn expandable_position_of_galaxy(&self, galaxy: &Galaxy, factor: usize) -> Galaxy {
+        let y_delta: usize = (factor - 1) * self.expandable_row_indices().filter(|x| *x < galaxy.coord.0).count();
+        let x_delta: usize = (factor - 1) * self.expandable_column_indices().filter(|x| *x < galaxy.coord.1).count();
         Galaxy { coord: (galaxy.coord.0 + y_delta, galaxy.coord.1 + x_delta) }
     }
 
-    pub fn expand_image(&self) -> Self {
+    pub fn expand_image(&self, factor: usize) -> Self {
         Image {
-            size: (self.size.0 + self.expandable_row_indices().count(), self.size.1 + self.expandable_column_indices().count()),
-            galaxies: self.galaxies.iter().map(|g| self.expandable_position_of_galaxy(g)).collect()
+            size: (self.size.0 + ((factor - 1) * self.expandable_row_indices().count()), self.size.1 + ((factor - 1) * self.expandable_column_indices().count())),
+            galaxies: self.galaxies.iter().map(|g| self.expandable_position_of_galaxy(g, factor)).collect()
         }
     }
 
@@ -64,8 +64,10 @@ impl From<Vec<String>> for Image {
 
 pub fn solve(lines: Vec<String>) {
     let image: Image = Image::from(lines);
-    let shortest_paths: usize = image.expand_image().galaxy_pairs().map(|(x, y)| x.shortest_path_to_other_galaxy(y)).sum();
-    println!("{}", shortest_paths);
+    let shortest_paths: usize = image.expand_image(2).galaxy_pairs().map(|(x, y)| x.shortest_path_to_other_galaxy(y)).sum();
+    println!("Expansion factor of 2: {}", shortest_paths);
+    let shortest_paths: usize = image.expand_image(1000000).galaxy_pairs().map(|(x, y)| x.shortest_path_to_other_galaxy(y)).sum();
+    println!("Expansion factor of 1,000,000: {}", shortest_paths);
 }
 
 
@@ -161,7 +163,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (0, 3)}), Galaxy{coord: (0, 4)});
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (0, 3)}, 1), Galaxy{coord: (0, 4)});
     }
 
     #[test]
@@ -178,7 +180,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (5, 1)}), Galaxy{coord: (6, 1)});
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (5, 1)}, 1), Galaxy{coord: (6, 1)});
     }
 
     #[test]
@@ -195,7 +197,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (8, 7)}), Galaxy{coord: (10, 9)});
+        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (8, 7)}, 1), Galaxy{coord: (10, 9)});
     }
 
     #[test]
