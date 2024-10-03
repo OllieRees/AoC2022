@@ -1,9 +1,10 @@
+use itertools::intersperse;
 use regex::Regex;
 
 use crate::ParseInputError;
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum SpringState {
     Broken,
     Operational,
@@ -43,8 +44,12 @@ impl TryFrom<String> for ConditionRecordEntry {
 }
 
 impl ConditionRecordEntry {
-    fn is_acceptable_entry(&self) -> bool {
+    pub fn is_acceptable_entry(&self) -> bool {
          self.springs.split(|x| x == &SpringState::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect::<Vec<usize>>() == self.broken_cardinalities
+    }
+
+    fn known_accepted_springs(&self) -> Vec<SpringState> {
+        intersperse(self.broken_cardinalities.iter().map(|n: &usize| vec![SpringState::Broken; *n]), vec![SpringState::Operational]).flatten().collect()
     }
 
     pub fn complete_entry_permutations(&self) -> impl Iterator<Item=Self> + '_ {
@@ -118,6 +123,18 @@ mod test_hot_springs {
         assert!(ConditionRecordEntry::try_from(".#...#....###. 1,1,3".to_string()).unwrap().is_acceptable_entry());
         assert!(ConditionRecordEntry::try_from(".#.#?#.#.?????? 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
         assert!(!ConditionRecordEntry::try_from(".##.##.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
+    }
+
+    #[test]
+    fn known_accepted_springs() {
+        assert_eq!(
+            ConditionRecordEntry::try_from("???.### 1,1,3".to_string()).unwrap().known_accepted_springs(),
+            vec![
+                SpringState::Broken, SpringState::Operational, SpringState::Broken,
+                SpringState::Operational,
+                SpringState::Broken, SpringState::Broken, SpringState::Broken
+            ]
+        );
     }
 
     // #[test]
