@@ -44,10 +44,7 @@ impl TryFrom<String> for ConditionRecordEntry {
 
 impl ConditionRecordEntry {
     fn is_acceptable_entry(&self) -> bool {
-        let non_operational_spring_group_cardinalities: Vec<usize> = self.springs.split(|x| x == &SpringState::Operational).filter_map(|x| {
-            let len = x.len();
-            if len == 0 {None} else {Some(len)}
-        }).collect();
+        let non_operational_spring_group_cardinalities: Vec<usize> = self.springs.split(|x| x == &SpringState::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect();
         non_operational_spring_group_cardinalities == self.broken_cardinalities
     }
 
@@ -119,6 +116,7 @@ mod test_hot_springs {
         assert!(ConditionRecordEntry::try_from(".#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
         assert!(ConditionRecordEntry::try_from(".#.###.#.######. 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
         assert!(ConditionRecordEntry::try_from("#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
+        assert!(ConditionRecordEntry::try_from(".#...#....###. 1,1,3".to_string()).unwrap().is_acceptable_entry());
         assert!(ConditionRecordEntry::try_from(".#.#?#.#.?????? 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
         assert!(!ConditionRecordEntry::try_from(".##.##.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
     }
