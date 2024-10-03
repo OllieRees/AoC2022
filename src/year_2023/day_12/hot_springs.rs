@@ -44,8 +44,7 @@ impl TryFrom<String> for ConditionRecordEntry {
 
 impl ConditionRecordEntry {
     fn is_acceptable_entry(&self) -> bool {
-        let non_operational_spring_group_cardinalities: Vec<usize> = self.springs.split(|x| x == &SpringState::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect();
-        non_operational_spring_group_cardinalities == self.broken_cardinalities
+         self.springs.split(|x| x == &SpringState::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect::<Vec<usize>>() == self.broken_cardinalities
     }
 
     pub fn complete_entry_permutations(&self) -> impl Iterator<Item=Self> + '_ {
