@@ -28,7 +28,7 @@ impl Image {
         (&HashSet::from_iter(0..self.size.1) - &self.galaxies.iter().map(|galaxies| galaxies.coord.1).collect::<HashSet<usize>>()).into_iter()
     }
 
-    fn expandable_position_of_galaxy(&self, galaxy: &Galaxy, factor: usize) -> Galaxy {
+    fn galaxy_in_expanded_image(&self, galaxy: &Galaxy, factor: usize) -> Galaxy {
         let y_delta: usize = (factor - 1) * self.expandable_row_indices().filter(|x| *x < galaxy.coord.0).count();
         let x_delta: usize = (factor - 1) * self.expandable_column_indices().filter(|x| *x < galaxy.coord.1).count();
         Galaxy { coord: (galaxy.coord.0 + y_delta, galaxy.coord.1 + x_delta) }
@@ -37,7 +37,7 @@ impl Image {
     pub fn expand_image(&self, factor: usize) -> Self {
         Image {
             size: (self.size.0 + ((factor - 1) * self.expandable_row_indices().count()), self.size.1 + ((factor - 1) * self.expandable_column_indices().count())),
-            galaxies: self.galaxies.iter().map(|g| self.expandable_position_of_galaxy(g, factor)).collect()
+            galaxies: self.galaxies.iter().map(|g| self.galaxy_in_expanded_image(g, factor)).collect()
         }
     }
 
@@ -158,7 +158,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (0, 3)}, 2), Galaxy{coord: (0, 4)});
+        assert_eq!(image.galaxy_in_expanded_image(&Galaxy {coord: (0, 3)}, 2), Galaxy{coord: (0, 4)});
     }
 
     #[test]
@@ -175,7 +175,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (5, 1)}, 2), Galaxy{coord: (6, 1)});
+        assert_eq!(image.galaxy_in_expanded_image(&Galaxy {coord: (5, 1)}, 2), Galaxy{coord: (6, 1)});
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod test_cosmic_expansion {
             ".......#..".to_string(),
             "#...#.....".to_string(),
         ]);
-        assert_eq!(image.expandable_position_of_galaxy(&Galaxy {coord: (8, 7)}, 2), Galaxy{coord: (10, 9)});
+        assert_eq!(image.galaxy_in_expanded_image(&Galaxy {coord: (8, 7)}, 2), Galaxy{coord: (10, 9)});
     }
 
     #[test]
