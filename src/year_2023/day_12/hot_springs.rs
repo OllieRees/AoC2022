@@ -38,7 +38,7 @@ impl TryFrom<String> for ConditionRecordEntry {
         let caps = re.captures(value.as_str()).ok_or(ParseInputError {details: format!("Couldn't Capture Record, {}", value)})?;
         Ok(ConditionRecordEntry{
             springs: caps.name("springs").unwrap().as_str().chars().map(|c| SpringState::try_from(c)).collect::<Result<Vec<SpringState>, ParseInputError>>()?,
-            broken_cardinalities: caps.name("nums").unwrap().as_str().chars().filter_map(|c| c.to_string().parse::<usize>().ok()).collect()
+            broken_cardinalities: caps.name("nums").unwrap().as_str().split(',').filter_map(|c| c.to_string().parse::<usize>().ok()).collect()
         })
     }
 }
@@ -105,6 +105,11 @@ mod test_hot_springs {
             ]
         );
         assert_eq!(entry.broken_cardinalities, vec![1, 1, 3])
+    }
+
+    #[test]
+    fn condition_record_entry_double_digit_cardinality() {
+        assert_eq!(ConditionRecordEntry::try_from("????#????#?#??#?#??. 5,10".to_string()).unwrap().broken_cardinalities, vec![5, 10]);
     }
 
     #[test]
