@@ -1,3 +1,5 @@
+use std::iter;
+
 use itertools::Itertools;
 use regex::Regex;
 
@@ -44,17 +46,34 @@ impl TryFrom<String> for ConditionRecordEntry {
 }
 
 impl ConditionRecordEntry {
+    fn broken_groups(&self) -> impl Iterator<Item=Vec<SpringCondition>> + '_ {
+        self.springs.split(|x| x == &SpringCondition::Operational).filter_map(|x| if x != &[] {Some(x.to_vec())} else {None})
+    }
+
     pub fn is_acceptable(&self) -> bool {
-         self.springs.split(|x| x == &SpringCondition::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect::<Vec<usize>>() == self.spring_group_size
+        self.broken_groups().map(|x| x.len()).collect::<Vec<usize>>() == self.spring_group_size
     }
 
     pub fn acceptable_permutations(&self) -> impl Iterator<Item=Self> + '_ {
+        // using associate_broken_groups_with_broken_count:
+        // for each element:
+        // n := |element|
+        // k := n - |broken springs in element|
+        // kCn
         self.springs.iter().map(|spring| {
             match spring {
                 SpringCondition::Unknown => vec![SpringCondition::Broken, SpringCondition::Operational],
                 _ => vec![spring.clone()]
             }
         }).multi_cartesian_product().map(|p| ConditionRecordEntry {springs: p, spring_group_size: self.spring_group_size.clone()}).filter(|entry| entry.is_acceptable())
+    }
+
+    #[allow(unstable_name_collisions)]
+    pub fn unfold(self) -> Self {
+        Self {
+            springs: iter::repeat(self.springs).take(5).intersperse(vec![SpringCondition::Unknown]).flatten().collect(),
+            spring_group_size: iter::repeat(self.spring_group_size).take(5).flatten().collect()
+        }
     }
 }
 
@@ -77,12 +96,19 @@ impl ConditionRecord {
     pub fn total_number_of_condition_permutations(&self) -> usize {
         self.entries.iter().map(|e| e.acceptable_permutations().count()).sum()
     }
+
+    pub fn unfold_entries(self) -> Self {
+        Self {
+            entries: self.entries.into_iter().map(|e| e.unfold()).collect()
+        }
+    }
 }
 
 
 pub fn solve(lines: Vec<String>) {
     if let Ok(record) = ConditionRecord::try_from(lines) {
         println!("{}", record.total_number_of_condition_permutations());
+        println!("{}", record.unfold_entries().total_number_of_condition_permutations());
     }
 }
 
@@ -143,9 +169,22 @@ mod test_hot_springs {
         assert_eq!(perms.get(0).unwrap(), &ConditionRecordEntry::try_from("#.#.### 1,1,3".to_string()).unwrap());
     }
 
-        #[test]
+    #[test]
     fn multiple_permutation_entry() {
         let perms: Vec<ConditionRecordEntry> = ConditionRecordEntry::try_from("?###???????? 3,2,1".to_string()).unwrap().acceptable_permutations().collect();
         assert_eq!(perms.len(), 10);
+    }
+
+    #[test]
+    fn unfold_entry() {
+        let entry = ConditionRecordEntry::try_from(".# 1".to_string()).unwrap().unfold();
+        assert_eq!(entry.springs, vec![
+            SpringCondition::Operational, SpringCondition::Broken, SpringCondition::Unknown,
+            SpringCondition::Operational, SpringCondition::Broken, SpringCondition::Unknown,
+            SpringCondition::Operational, SpringCondition::Broken, SpringCondition::Unknown,
+            SpringCondition::Operational, SpringCondition::Broken, SpringCondition::Unknown,
+            SpringCondition::Operational, SpringCondition::Broken,
+        ]);
+        assert_eq!(entry.spring_group_size, vec![1, 1, 1, 1, 1]);
     }
 }
