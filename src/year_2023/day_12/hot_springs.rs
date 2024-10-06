@@ -5,13 +5,13 @@ use crate::ParseInputError;
 
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum SpringState {
+enum SpringCondition {
     Broken,
     Operational,
     Unknown
 }
 
-impl TryFrom<char> for SpringState {
+impl TryFrom<char> for SpringCondition {
     type Error = ParseInputError;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
@@ -24,10 +24,10 @@ impl TryFrom<char> for SpringState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct ConditionRecordEntry {
-    springs: Vec<SpringState>,
-    broken_cardinalities: Vec<usize>
+    springs: Vec<SpringCondition>,
+    spring_group_size: Vec<usize>
 }
 
 impl TryFrom<String> for ConditionRecordEntry {
@@ -37,24 +37,24 @@ impl TryFrom<String> for ConditionRecordEntry {
         let re = Regex::new("^(?<springs>[#?.]+) (?<nums>[0-9,]+)$").unwrap();
         let caps = re.captures(value.as_str()).ok_or(ParseInputError {details: format!("Couldn't Capture Record, {}", value)})?;
         Ok(ConditionRecordEntry{
-            springs: caps.name("springs").unwrap().as_str().chars().map(|c| SpringState::try_from(c)).collect::<Result<Vec<SpringState>, ParseInputError>>()?,
-            broken_cardinalities: caps.name("nums").unwrap().as_str().split(',').filter_map(|c| c.to_string().parse::<usize>().ok()).collect()
+            springs: caps.name("springs").unwrap().as_str().chars().map(|c| SpringCondition::try_from(c)).collect::<Result<Vec<SpringCondition>, ParseInputError>>()?,
+            spring_group_size: caps.name("nums").unwrap().as_str().split(',').filter_map(|c| c.to_string().parse::<usize>().ok()).collect()
         })
     }
 }
 
 impl ConditionRecordEntry {
-    pub fn is_acceptable_entry(&self) -> bool {
-         self.springs.split(|x| x == &SpringState::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect::<Vec<usize>>() == self.broken_cardinalities
+    pub fn is_acceptable(&self) -> bool {
+         self.springs.split(|x| x == &SpringCondition::Operational).filter(|x| x != &&[]).map(|x| x.len()).collect::<Vec<usize>>() == self.spring_group_size
     }
 
-    pub fn complete_entry_permutations(&self) -> impl Iterator<Item=Self> + '_ {
+    pub fn acceptable_permutations(&self) -> impl Iterator<Item=Self> + '_ {
         self.springs.iter().map(|spring| {
             match spring {
-                SpringState::Unknown => vec![SpringState::Broken, SpringState::Operational],
+                SpringCondition::Unknown => vec![SpringCondition::Broken, SpringCondition::Operational],
                 _ => vec![spring.clone()]
             }
-        }).multi_cartesian_product().map(|p| ConditionRecordEntry {springs: p, broken_cardinalities: self.broken_cardinalities.clone()}).filter(|entry| entry.is_acceptable_entry())
+        }).multi_cartesian_product().map(|p| ConditionRecordEntry {springs: p, spring_group_size: self.spring_group_size.clone()}).filter(|entry| entry.is_acceptable())
     }
 }
 
@@ -73,24 +73,29 @@ impl TryFrom<Vec<String>> for ConditionRecord {
     }
 }
 
+impl ConditionRecord {
+    pub fn total_number_of_condition_permutations(&self) -> usize {
+        self.entries.iter().map(|e| e.acceptable_permutations().count()).sum()
+    }
+}
+
 
 pub fn solve(lines: Vec<String>) {
     if let Ok(record) = ConditionRecord::try_from(lines) {
-        let total_permutation_count: usize = record.entries.into_iter().map(|e| e.complete_entry_permutations().count()).sum();
-        println!("{}", total_permutation_count);
+        println!("{}", record.total_number_of_condition_permutations());
     }
 }
 
 #[cfg(test)]
 mod test_hot_springs {
-    use super::{ConditionRecordEntry, SpringState};
+    use super::{ConditionRecordEntry, SpringCondition};
 
     #[test]
     fn spring_state_conversion_from_char() {
-        assert_eq!(SpringState::try_from('#'), Ok(SpringState::Broken));
-        assert_eq!(SpringState::try_from('?'), Ok(SpringState::Unknown));
-        assert_eq!(SpringState::try_from('.'), Ok(SpringState::Operational));
-        assert!(SpringState::try_from('x').is_err());
+        assert_eq!(SpringCondition::try_from('#'), Ok(SpringCondition::Broken));
+        assert_eq!(SpringCondition::try_from('?'), Ok(SpringCondition::Unknown));
+        assert_eq!(SpringCondition::try_from('.'), Ok(SpringCondition::Operational));
+        assert!(SpringCondition::try_from('x').is_err());
     }
 
     #[test]
@@ -99,17 +104,17 @@ mod test_hot_springs {
         assert_eq!(
             entry.springs,
             vec![
-                SpringState::Unknown, SpringState::Unknown, SpringState::Unknown,
-                SpringState::Operational,
-                SpringState::Broken, SpringState::Broken, SpringState::Broken
+                SpringCondition::Unknown, SpringCondition::Unknown, SpringCondition::Unknown,
+                SpringCondition::Operational,
+                SpringCondition::Broken, SpringCondition::Broken, SpringCondition::Broken
             ]
         );
-        assert_eq!(entry.broken_cardinalities, vec![1, 1, 3])
+        assert_eq!(entry.spring_group_size, vec![1, 1, 3])
     }
 
     #[test]
     fn condition_record_entry_double_digit_cardinality() {
-        assert_eq!(ConditionRecordEntry::try_from("????#????#?#??#?#??. 5,10".to_string()).unwrap().broken_cardinalities, vec![5, 10]);
+        assert_eq!(ConditionRecordEntry::try_from("????#????#?#??#?#??. 5,10".to_string()).unwrap().spring_group_size, vec![5, 10]);
     }
 
     #[test]
@@ -123,27 +128,24 @@ mod test_hot_springs {
 
     #[test]
     fn acceptable_entries() {
-        assert!(ConditionRecordEntry::try_from(".#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
-        assert!(ConditionRecordEntry::try_from(".#.###.#.######. 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
-        assert!(ConditionRecordEntry::try_from("#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
-        assert!(ConditionRecordEntry::try_from(".#...#....###. 1,1,3".to_string()).unwrap().is_acceptable_entry());
-        assert!(ConditionRecordEntry::try_from(".#.#?#.#.?????? 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
-        assert!(!ConditionRecordEntry::try_from(".##.##.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable_entry());
+        assert!(ConditionRecordEntry::try_from(".#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable());
+        assert!(ConditionRecordEntry::try_from(".#.###.#.######. 1,3,1,6".to_string()).unwrap().is_acceptable());
+        assert!(ConditionRecordEntry::try_from("#.###.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable());
+        assert!(ConditionRecordEntry::try_from(".#...#....###. 1,1,3".to_string()).unwrap().is_acceptable());
+        assert!(ConditionRecordEntry::try_from(".#.#?#.#.?????? 1,3,1,6".to_string()).unwrap().is_acceptable());
+        assert!(!ConditionRecordEntry::try_from(".##.##.#.###### 1,3,1,6".to_string()).unwrap().is_acceptable());
     }
 
-    // #[test]
-    // fn one_permutation_entry() {
-    //     let perms: Vec<ConditionRecordEntry> = ConditionRecordEntry::try_from("???.### 1,1,3".to_string()).unwrap().complete_entry_permutations().collect();
-    //     assert_eq!(perms.len(), 1);
-    //     // let perm: String = perms.get(0).unwrap().springs.into_iter().map(|ss| ss.try_into().ok().unwrap()).collect::<String>();
-    //     // assert_eq!(perm, "#.#.###".to_string());
-    // }
+    #[test]
+    fn one_permutation_entry() {
+        let perms: Vec<ConditionRecordEntry> = ConditionRecordEntry::try_from("???.### 1,1,3".to_string()).unwrap().acceptable_permutations().collect();
+        assert_eq!(perms.len(), 1);
+        assert_eq!(perms.get(0).unwrap(), &ConditionRecordEntry::try_from("#.#.### 1,1,3".to_string()).unwrap());
+    }
 
-    // #[test]
-    // fn multiple_permutation_entry() {
-    //     let perms: Vec<ConditionRecordEntry> = ConditionRecordEntry::try_from("?###???????? 3,2,1".to_string()).unwrap().complete_entry_permutations().collect();
-    //     assert_eq!(perms.len(), 10);
-    //     // let perm: String = perms.get(0).unwrap().springs.into_iter().map(|ss| ss.try_into().ok().unwrap()).collect::<String>();
-    //     // assert_eq!(perm, "#.#.###".to_string());
-    // }
+        #[test]
+    fn multiple_permutation_entry() {
+        let perms: Vec<ConditionRecordEntry> = ConditionRecordEntry::try_from("?###???????? 3,2,1".to_string()).unwrap().acceptable_permutations().collect();
+        assert_eq!(perms.len(), 10);
+    }
 }
